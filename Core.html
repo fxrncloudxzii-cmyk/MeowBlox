@@ -1,1 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeowBlox Runtime Client Core</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
+        :root {
+            --bg-color: #020100;
+            --panel-color: #1a0e02;
+            --border-color: #2e1803;
+            --accent-color: #ff941a;
+            --accent-hover: #e07b0d;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: #ffffff;
+        }
+
+        #client-three-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* TOP LEFT HUD BRAND ICON */
+        .client-top-hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
+        .client-brand-menu-trigger {
+            width: 44px;
+            height: 44px;
+            background: var(--panel-color);
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        .client-brand-menu-trigger:active { transform: scale(0.95); }
+        .client-brand-menu-trigger img { width: 30px; height: 30px; object-fit: contain; }
+
+        .client-instance-header-title {
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* OVERHEAD FLOATING CHAT BUBBLES */
+        #client-bubble-container-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .bubble-chat-billboard {
+            position: absolute;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #111;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 12px;
+            max-width: 180px;
+            word-wrap: break-word;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            transition: opacity 0.2s;
+            border: 2px solid var(--accent-color);
+        }
+        .bubble-chat-billboard::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.95) transparent;
+        }
+
+        /* TEXT CHAT ENGINE LOG */
+        .client-text-chat-module {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 340px;
+            background: rgba(13, 6, 0, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            z-index: 10;
+        }
+        .client-chat-log {
+            height: 150px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+            padding-right: 5px;
+        }
+        .client-chat-row-msg { font-size: 13px; line-height: 1.4; word-break: break-all; }
+        .client-chat-input-row { display: flex; gap: 8px; }
+        .client-chat-input-row input {
+            flex: 1;
+            padding: 10px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: white;
+            font-size: 13px;
+        }
+        .client-chat-input-row input:focus { outline: none; border-color: var(--accent-color); }
+        .client-send-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .client-send-btn:hover { background: var(--accent-hover); }
+
+        /* RADIAL EMOTE WHEEL SYSTEM OVERLAY */
+        .client-emote-wheel-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        .radial-wheel-wrapper {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: rgba(26, 14, 2, 0.95);
+            border: 4px solid var(--accent-color);
+            box-shadow: 0 0 30px rgba(255,148,26,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .radial-center-node {
+            width: 70px;
+            height: 70px;
+            background: #000;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        .radial-emote-sector {
+            position: absolute;
+            width: 95px;
+            height: 48px;
+            background: #0d0600;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #fff;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .radial-emote-sector:hover { background: var(--accent-color); transform: scale(1.08); }
+
+        /* ESC CONTROL PANEL MODAL BUTTON OVERLAY */
+        .client-esc-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+        }
+        .client-esc-box {
+            background: var(--panel-color);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 460px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(255,148,26,0.2);
+        }
+        .esc-title { color: var(--accent-color); margin-bottom: 20px; font-size: 22px; }
+        .esc-label { display: block; text-align: left; font-size: 12px; color: #888; margin-bottom: 5px; }
+        .esc-input { width: 100%; padding: 10px; background: #000; border: 1px solid var(--border-color); color: white; border-radius: 4px; margin-bottom: 15px; }
+        .esc-btn { width: 100%; padding: 12px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; margin-top: 10px; font-size: 14px; }
+        
+        .client-bottom-controls-right {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+        .emote-toggle-btn {
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .emote-toggle-btn:hover { border-color: var(--accent-color); }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="client-three-canvas"></div>
+    <div id="client-bubble-container-layer"></div>
+
+    <div class="client-top-hud">
+        <div class="client-brand-menu-trigger" onclick="toggleEscapeMenu(true)">
+            <img src="https://cdn.discordapp.com/attachments/1503068697118511116/1517223710170546428/nd5qnst.png?ex=6a358031&is=6a342eb1&hm=85f3ec0275e9ea93715c7a8bb9f8f5fa9c5115f93f1ea4df03c19b4a270e892c&" alt="MeowBlox Logo">
+        </div>
+        <div class="client-instance-header-title">MeowEngine Production Environment v1.2</div>
+    </div>
+
+    <div class="client-text-chat-module">
+        <div id="client-chat-log" class="client-chat-log">
+            <div class="client-chat-row-msg" style="color:var(--accent-color);">⚡ Runtime Core Module initialized. Use WASD to navigate character structure.</div>
+        </div>
+        <form class="client-chat-input-row" onsubmit="dispatchClientChatMessage(event)">
+            <input type="text" id="client-chat-field" placeholder="Type inside system chat layer... [Enter]" autocomplete="off">
+            <button type="submit" class="client-send-btn">Send</button>
+        </form>
+    </div>
+
+    <div class="client-bottom-controls-right">
+        <button class="emote-toggle-btn" onclick="toggleEmoteWheel(true)">🎭 Emote Menu [ . ]</button>
+    </div>
+
+    <div id="client-emote-wheel-overlay" class="client-emote-wheel-overlay hidden" onclick="toggleEmoteWheel(false)">
+        <div class="radial-wheel-wrapper" onclick="event.stopPropagation()">
+            <div class="radial-center-node">Emotes</div>
+            <div class="radial-emote-sector" style="top:20px; left:102px;" onclick="fireEmoteSequence('macarena')">💃 Macarena</div>
+            <div class="radial-emote-sector" style="top:126px; right:15px;" onclick="fireEmoteSequence('take-l')">🤡 Take the L</div>
+            <div class="radial-emote-sector" style="bottom:20px; left:102px;" onclick="fireEmoteSequence('sea-lion')">🦭 Sea Lion</div>
+            <div class="radial-emote-sector" style="top:126px; left:15px;" onclick="fireEmoteSequence('tiki-tiki')">🗿 Tiki Tiki</div>
+        </div>
+    </div>
+
+    <div id="client-esc-overlay" class="client-esc-overlay hidden">
+        <div class="client-esc-box">
+            <h2 class="esc-title">MeowBlox Core Client Settings</h2>
+            
+            <label class="esc-label">Master Channel Sound Node Gain Volume</label>
+            <input type="range" class="esc-input" min="0" max="100" value="75" style="accent-color: var(--accent-color);">
+            
+            <label class="esc-label">3D Engine Rendering Profile Profile</label>
+            <select class="esc-input">
+                <option>Automatic (MeowEngine Adaptive)</option>
+                <option>Performance Optimization Profile</option>
+                <option>Maximum Fidelity (Voxel Tracing Mode)</option>
+            </select>
+
+            <button class="esc-btn" style="background: #2ecc71; color: white;" onclick="toggleEscapeMenu(false)">Resume Active Instance</button>
+            <button class="esc-btn" style="background: #e74c3c; color: white;" onclick="handleHardExitRequest()">Leave Game</button>
+        </div>
+    </div>
+
+    <script>
+        // --- LIVE RENDERING GLOBALS MATRIX ---
+        let scene, camera, renderer, clock;
+        let localPlayerModel, computerNetworkPlayer;
+        let animationFrameId = null;
+
+        // --- WASD PHYSICS LOCOMOTION STATE STRUCTURE ---
+        const activeKeysPressed = { w: false, a: false, s: false, d: false };
+        const baseMovementVelocity = 4.2; 
+
+        // --- CORE SELECTION ACTION METRICS ---
+        let runningActiveEmoteKey = null;
+        let currentEmoteTimeline = 0;
+        const profanityFilterBlacklist = ["badword", "trash", "hate", "scam", "exploit"];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initGameEngineEnvironment();
+            setupInputHooks();
+        });
+
+        function initGameEngineEnvironment() {
+            const viewport = document.getElementById('client-three-canvas');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x070402);
+            scene.fog = new THREE.FogExp2(0x070402, 0.04);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 10);
+            camera.lookAt(0, 0.5, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            viewport.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // Environments lighting distribution network
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            let trackingSunlight = new THREE.DirectionalLight(0xff941a, 0.5);
+            trackingSunlight.position.set(10, 15, 8);
+            scene.add(trackingSunlight);
+
+            // Floor Grid Infrastructure
+            let sectorGrid = new THREE.GridHelper(50, 50, 0xff941a, 0x1f1105);
+            sectorGrid.position.y = -2.2;
+            scene.add(sectorGrid);
+
+            // Spawn Rigged Geometries
+            localPlayerModel = assembleBlockModel("#ffdbac", "#ff941a", "#1e3799");
+            localPlayerModel.position.set(-2, 0, 0);
+            localPlayerModel.userData = { uid: "LocalUser", tagLabel: "You" };
+            scene.add(localPlayerModel);
+
+            computerNetworkPlayer = assembleBlockModel("#f1c27d", "#e74c3c", "#2d3436");
+            computerNetworkPlayer.position.set(2, 0, -1);
+            computerNetworkPlayer.rotation.y = -0.5;
+            computerNetworkPlayer.userData = { uid: "PeerInstance", tagLabel: "KittyPlayer" };
+            scene.add(computerNetworkPlayer);
+
+            executeClientRenderTick();
+
+            setTimeout(() => { triggerPeerMockResponse("Hey! Nice to see you inside the testing instance node!"); }, 2000);
+        }
+
+        function assembleBlockModel(skinHex, shirtHex, pantsHex) {
+            let modelGroup = new THREE.Group();
+            let skinM = new THREE.MeshLambertMaterial({ color: skinHex });
+            let shirtM = new THREE.MeshLambertMaterial({ color: shirtHex });
+            let pantsM = new THREE.MeshLambertMaterial({ color: pantsHex });
+
+            let headBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinM); headBox.position.y = 1.3; headBox.name = "head"; modelGroup.add(headBox);
+            let torsoBox = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.6, 0.5), shirtM); torsoBox.position.y = 0.1; torsoBox.name = "torso"; modelGroup.add(torsoBox);
+            
+            let lArm = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.5, 0.42), skinM); lArm.position.set(-0.75, 0.1, 0); lArm.name = "leftArm"; modelGroup.add(lArm);
+            let rArm = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.5, 0.42), skinM); rArm.position.set(0.75, 0.1, 0); rArm.name = "rightArm"; modelGroup.add(rArm);
+            let lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.5, 0.42), pantsM); lLeg.position.set(-0.26, -1.45, 0); lLeg.name = "leftLeg"; modelGroup.add(lLeg);
+            let rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.5, 0.42), pantsM); rLeg.position.set(0.26, -1.45, 0); rLeg.name = "rightLeg"; modelGroup.add(rLeg);
+
+            return modelGroup;
+        }
+
+        function setupInputHooks() {
+            window.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+                    if (document.activeElement.tagName === 'INPUT') return;
+                    activeKeysPressed[key] = true;
+                    runningActiveEmoteKey = null;
+                }
+                if (e.key === '.') {
+                    e.preventDefault();
+                    toggleEmoteWheel(true);
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+                    activeKeysPressed[key] = false;
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function executeClientRenderTick() {
+            animationFrameId = requestAnimationFrame(executeClientRenderTick);
+            const dT = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            let dX = 0;
+            let dZ = 0;
+            if (activeKeysPressed.w) dZ -= 1;
+            if (activeKeysPressed.s) dZ += 1;
+            if (activeKeysPressed.a) dX -= 1;
+            if (activeKeysPressed.d) dX += 1;
+
+            if (dX !== 0 || dZ !== 0) {
+
+                let length = Math.sqrt(dX * dX + dZ * dZ);
+                let moveX = (dX / length) * baseMovementVelocity * dT;
+                let moveZ = (dZ / length) * baseMovementVelocity * dT;
+
+                localPlayerModel.position.x += moveX;
+                localPlayerModel.position.z += moveZ;
+
+                let targetFacingAngle = Math.atan2(moveX, moveZ);
+                localPlayerModel.rotation.y = targetFacingAngle;
+
+                localPlayerModel.getObjectByName("leftLeg").rotation.x = Math.sin(time * 12) * 0.6;
+                localPlayerModel.getObjectByName("rightLeg").rotation.x = -Math.sin(time * 12) * 0.6;
+                localPlayerModel.getObjectByName("leftArm").rotation.x = -Math.sin(time * 12) * 0.6;
+                localPlayerModel.getObjectByName("rightArm").rotation.x = Math.sin(time * 12) * 0.6;
+                localPlayerModel.getObjectByName("torso").position.y = 0.1 + Math.abs(Math.sin(time * 12)) * 0.05;
+            } else {
+                if (!runningActiveEmoteKey) {
+                    localPlayerModel.getObjectByName("leftLeg").rotation.set(0, 0, 0);
+                    localPlayerModel.getObjectByName("rightLeg").rotation.set(0, 0, 0);
+                    localPlayerModel.getObjectByName("leftArm").rotation.z = Math.sin(time * 2) * 0.04;
+                    localPlayerModel.getObjectByName("rightArm").rotation.z = -Math.sin(time * 2) * 0.04;
+                    localPlayerModel.getObjectByName("torso").position.y = 0.1 + Math.sin(time * 2) * 0.015;
+                    localPlayerModel.getObjectByName("head").position.y = 1.3 + Math.sin(time * 2) * 0.01;
+                }
+            }
+
+          
+            computerNetworkPlayer.getObjectByName("torso").position.y = 0.1 + Math.cos(time * 2.2) * 0.015;
+            computerNetworkPlayer.getObjectByName("head").position.y = 1.3 + Math.cos(time * 2.2) * 0.01;
+
+            if (runningActiveEmoteKey && localPlayerModel) {
+                currentEmoteTimeline += dT;
+                let lArm = localPlayerModel.getObjectByName("leftArm");
+                let rArm = localPlayerModel.getObjectByName("rightArm");
+                let lLeg = localPlayerModel.getObjectByName("leftLeg");
+                let rLeg = localPlayerModel.getObjectByName("rightLeg");
+
+                if (runningActiveEmoteKey === 'macarena') {
+                    lArm.rotation.x = -Math.PI / 2 + Math.sin(time * 8) * 0.2;
+                    rArm.rotation.x = -Math.PI / 2 + Math.cos(time * 8) * 0.2;
+                    localPlayerModel.position.x += Math.sin(time * 4) * 0.01;
+                } else if (runningActiveEmoteKey === 'take-l') {
+                    rArm.rotation.z = Math.PI - 0.4 + Math.sin(time * 10) * 0.3;
+                    lArm.rotation.x = -0.2;
+                    localPlayerModel.position.y = Math.abs(Math.sin(time * 6)) * 0.5;
+                } else if (runningActiveEmoteKey === 'sea-lion') {
+                    lArm.rotation.z = -Math.PI/3 - Math.abs(Math.sin(time * 12)) * 0.5;
+                    rArm.rotation.z = Math.PI/3 + Math.abs(Math.sin(time * 12)) * 0.5;
+                    localPlayerModel.rotation.x = Math.sin(time * 5) * 0.1;
+                } else if (runningActiveEmoteKey === 'tiki-tiki') {
+                    localPlayerModel.rotation.y = Math.sin(time * 10) * 0.4;
+                    lLeg.rotation.x = Math.sin(time * 8) * 0.3;
+                    rLeg.rotation.x = -Math.sin(time * 8) * 0.3;
+                }
+
+                if (currentEmoteTimeline > 6.0) {
+                    runningActiveEmoteKey = null;
+                    lArm.rotation.set(0,0,0); rArm.rotation.set(0,0,0);
+                    lLeg.rotation.set(0,0,0); rLeg.rotation.set(0,0,0);
+                    localPlayerModel.position.y = 0; localPlayerModel.rotation.set(0,0,0);
+                }
+            }
+
+            renderer.render(scene, camera);
+            repositionScreenspaceOverlayBillboards();
+        }
+
+        function applyProfanitySanitization(rawMsg) {
+            let sanitized = rawMsg;
+            profanityFilterBlacklist.forEach(forbiddenTerm => {
+                let regularExpressionExp = new RegExp(forbiddenTerm, "gi");
+                sanitized = sanitized.replace(regularExpressionExp, "#".repeat(forbiddenTerm.length));
+            });
+            return sanitized;
+        }
+
+        function dispatchClientChatMessage(e) {
+            e.preventDefault();
+            const logBox = document.getElementById('client-chat-log');
+            const targetInput = document.getElementById('client-chat-field');
+            let rawStr = targetInput.value.trim(); if (!rawStr) return;
+            targetInput.value = "";
+
+            let cleanMessage = applyProfanitySanitization(rawStr);
+
+            logBox.innerHTML += `<div class="client-chat-row-msg"><strong style="color:var(--accent-color);">You:</strong> ${cleanMessage}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+
+            generateScreenspaceBillboardBubble("LocalUser", cleanMessage);
+        }
+
+        function triggerPeerMockResponse(msgString) {
+            const logBox = document.getElementById('client-chat-log');
+            logBox.innerHTML += `<div class="client-chat-row-msg"><strong style="color:#3498db;">KittyPlayer:</strong> ${msgString}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+
+            generateScreenspaceBillboardBubble("PeerInstance", msgString);
+        }
+
+        function generateScreenspaceBillboardBubble(targetIdentityString, contextText) {
+            let previousDOMNode = document.getElementById(`bubble-node-${targetIdentityString}`);
+            if (previousDOMNode) previousDOMNode.remove();
+
+            let bubbleElement = document.createElement('div');
+            bubbleElement.id = `bubble-node-${targetIdentityString}`;
+            bubbleElement.className = "bubble-chat-billboard";
+            bubbleElement.textContent = contextText;
+            document.getElementById('client-bubble-container-layer').appendChild(bubbleElement);
+
+            setTimeout(() => { if (bubbleElement) bubbleElement.remove(); }, 4000);
+        }
+
+        function repositionScreenspaceOverlayBillboards() {
+            let renderList = [localPlayerModel, computerNetworkPlayer];
+
+            renderList.forEach(modelNode => {
+                if (!modelNode) return;
+                let lookupId = modelNode.userData.uid;
+                let bubbleDOMElement = document.getElementById(`bubble-node-${lookupId}`);
+                if (!bubbleDOMElement) return;
+
+                let spatialVector = new THREE.Vector3();
+                modelNode.getObjectByName("head").getWorldPosition(spatialVector);
+                spatialVector.y += 0.8; // Offset upwards directly out of head bounds
+
+                spatialVector.project(camera);
+                let calculativeX = (spatialVector.x * .5 + .5) * window.innerWidth;
+                let calculativeY = (-(spatialVector.y * .5) + .5) * window.innerHeight;
+
+                bubbleDOMElement.style.left = `${calculativeX}px`;
+                bubbleDOMElement.style.top = `${calculativeY}px`;
+            });
+        }
+      
+        function toggleEmoteWheel(show) { document.getElementById('client-emote-wheel-overlay').classList.toggle('hidden', !show); }
+        function toggleEscapeMenu(show) { document.getElementById('client-esc-overlay').classList.toggle('hidden', !show); }
+
+        function fireEmoteSequence(emoteKey) {
+            toggleEmoteWheel(false);
+            runningActiveEmoteKey = emoteKey;
+            currentEmoteTimeline = 0;
+            
+            const logBox = document.getElementById('client-chat-log');
+            logBox.innerHTML += `<div class="client-chat-row-msg" style="color:#9b59b6; font-style:italic;">🎭 Emote active: ${emoteKey.toUpperCase()}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function handleHardExitRequest() {
+            toggleEscapeMenu(false);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            
+            console.log("Ejection trigger sequence activated.");
+            alert("Leave Game request fired. Execution pipeline halted.");
+        }
+    </script>
+</body>
+</html>
