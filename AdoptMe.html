@@ -3,106 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adopt Me! Core Grid Environment</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Adopt Me! | MeowBlox</title>
     <style>
-        body {
+        html, body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #b3e5fc;
+            background: #020100;
+        }
+
+        #boot-loader-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #020100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 9999;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
+            color: #fff;
+            transition: opacity 0.3s ease;
         }
-        #game-canvas {
-            width: 100vw;
-            height: 100vh;
-            display: block;
+        #boot-loader-screen.fade-out { opacity: 0; pointer-events: none; }
+        .boot-spinner {
+            width: 46px;
+            height: 46px;
+            border: 4px solid #2e1803;
+            border-top-color: #ff941a;
+            border-radius: 50%;
+            animation: boot-spin 0.8s linear infinite;
         }
+        @keyframes boot-spin { to { transform: rotate(360deg); } }
+        #boot-loader-screen .boot-label {
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            color: #c9a06b;
+            text-transform: uppercase;
+        }
+        #boot-loader-screen .boot-error {
+            color: #e74c3c;
+            font-size: 13px;
+            max-width: 360px;
+            text-align: center;
+            display: none;
+        }
+
         .game-hud {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 15px;
+            left: 70px;
             background: rgba(13, 6, 0, 0.85);
-            padding: 15px 25px;
-            border-radius: 10px;
+            padding: 10px 18px;
+            border-radius: 8px;
             color: #fff;
-            backdrop-filter: blur(8px);
             border: 2px solid #ff941a;
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
             pointer-events: none;
+            z-index: 10;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .game-title {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
             color: #ff941a;
             text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        #hud-user-label {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 3px;
         }
     </style>
 </head>
 <body>
 
-    <div class="game-hud">
-        <div class="game-title">🏡 Adopt Me! Core Stream</div>
-        <div id="hud-user-label" style="font-size:12px; color:#ccc; margin-top:4px;">Loading Profile Engine...</div>
+    <div id="boot-loader-screen">
+        <div class="boot-spinner"></div>
+        <div class="boot-label">Loading MeowEngine Core Module…</div>
+        <div class="boot-error" id="boot-error-msg">
+            Couldn't load the core client module. Check that Core.html is reachable from this page, then refresh.
+        </div>
     </div>
 
-    <div id="game-canvas"></div>
+    <div class="game-hud">
+        <div class="game-title">Adopt Me!</div>
+        <div id="hud-user-label">Loading Profile Engine...</div>
+    </div>
 
     <script>
-        let scene, camera, renderer, houseGroup, playerGroup;
-        let headMesh, torsoMesh, leftArm, rightArm, leftLeg, rightLeg;
+       
+        const CORE_MODULE_PATH = "Core.html";
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCoreModule(CORE_MODULE_PATH);
+        });
 
-        // 🟢 THE CORE MATRIX FIX: Default fallbacks that instantly overwrite from your actual active profile database
-        let avatarColors = {
-            skin: "#f1c27d",
-            shirt: "#ff941a",
-            pants: "#1e3799"
-        };
-        let currentSessionUsername = "Player";
-
-        function pullActiveCoreSystemProfile() {
+        async function loadCoreModule(path) {
             try {
-                const activeSession = sessionStorage.getItem('mb_active_session');
-                const usersDB = JSON.parse(localStorage.getItem('mb_users_db')) || {};
-                
-                if (activeSession && usersDB[activeSession.toLowerCase()]) {
-                    const profile = usersDB[activeSession.toLowerCase()];
-                    currentSessionUsername = profile.user || "Player";
-                    
-                    // Pull the custom colors saved by your avatar customizer screen
-                    if (profile.avatar) {
-                        avatarColors.skin = profile.avatar.skin || avatarColors.skin;
-                        avatarColors.shirt = profile.avatar.shirt || avatarColors.shirt;
-                        avatarColors.pants = profile.avatar.pants || avatarColors.pants;
-                    }
-                    document.getElementById('hud-user-label').innerText = `Active User: ${currentSessionUsername}`;
-                } else {
-                    document.getElementById('hud-user-label').innerText = `Active User: Guest Mode`;
-                }
+                const res = await fetch(path, { cache: "no-cache" });
+                if (!res.ok) throw new Error(`Core module fetch failed: HTTP ${res.status}`);
+                let html = await res.text();
+                html = exposeCoreStateGlobals(html);
+                mountCoreModule(html);
             } catch (err) {
-                console.log("Core system storage hook state offline, using defaults.");
+                console.error("Failed to load Core.html:", err);
+                document.getElementById('boot-error-msg').style.display = 'block';
+                document.querySelector('#boot-loader-screen .boot-label').textContent = "Core module failed to load.";
             }
         }
 
-        function initGameWorld() {
-            // First read what your system customized
-            pullActiveCoreSystemProfile();
+       
+        function exposeCoreStateGlobals(html) {
+            const targetedDeclarations = [
+                'let scene, camera, renderer, clock;',
+                'let localPlayerModel, computerNetworkPlayer;'
+            ];
+            let patched = html;
+            targetedDeclarations.forEach(declLine => {
+                if (patched.includes(declLine)) {
+                    patched = patched.replace(declLine, declLine.replace('let', 'var'));
+                } else {
+                    console.warn(
+                        `AdoptMe: expected declaration not found in Core.html ("${declLine}"). ` +
+                        `Core.html may have changed -- window.scene/camera/etc. might not be reachable.`
+                    );
+                }
+            });
+            return patched;
+        }
 
-            const container = document.getElementById('game-canvas');
+        function mountCoreModule(rawHtml) {
+            // Parse Core.html's markup so we can lift out exactly what we need
+            const parsedDoc = new DOMParser().parseFromString(rawHtml, "text/html");
 
-            scene = new THREE.Scene();
+            // 1) Pull in Core's <style> blocks so its HUD/canvas/chat/emote CSS applies here
+            parsedDoc.querySelectorAll('style').forEach(styleNode => {
+                document.head.appendChild(styleNode.cloneNode(true));
+            });
+
+            const externalScripts = Array.from(parsedDoc.querySelectorAll('script[src]'));
+
+            const coreBodyFragment = document.createDocumentFragment();
+            Array.from(parsedDoc.body.children).forEach(node => {
+                if (node.tagName === 'SCRIPT') return;
+                coreBodyFragment.appendChild(node.cloneNode(true));
+            });
+
+            const coreMountPoint = document.createElement('div');
+            coreMountPoint.id = 'core-module-mount';
+            coreMountPoint.appendChild(coreBodyFragment);
+            document.body.appendChild(coreMountPoint);
+
+            const inlineScripts = Array.from(parsedDoc.querySelectorAll('script:not([src])'))
+                .map(s => s.textContent);
+
+            loadScriptsSequentially(externalScripts.map(s => s.getAttribute('src')))
+                .then(() => {
+          
+                    inlineScripts.forEach(code => {
+                        const scriptEl = document.createElement('script');
+                        scriptEl.textContent = code;
+                        document.body.appendChild(scriptEl);
+                    });
+
+                   
+                    if (typeof window.initGameEngineEnvironment === 'function') {
+                        window.initGameEngineEnvironment();
+                    } else {
+                        throw new Error("Core module loaded but initGameEngineEnvironment() was not found.");
+                    }
+                    if (typeof window.setupInputHooks === 'function') {
+                        window.setupInputHooks();
+                    }
+
+        
+                    onCoreEngineReady();
+                })
+                .catch(err => {
+                    console.error("Failed to load Core module:", err);
+                    document.getElementById('boot-error-msg').style.display = 'block';
+                    document.querySelector('#boot-loader-screen .boot-label').textContent = "Core module failed to load.";
+                });
+        }
+
+        function loadScriptsSequentially(srcList) {
+            return srcList.reduce((chain, src) => {
+                return chain.then(() => new Promise((resolve, reject) => {
+                    // Avoid re-loading a script that's already on the page
+                    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+                    const el = document.createElement('script');
+                    el.src = src;
+                    el.onload = resolve;
+                    el.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+                    document.body.appendChild(el);
+                }));
+            }, Promise.resolve());
+        }
+
+        function onCoreEngineReady() {
+            removeCoreNpcPlayer();
+            buildAdoptMeMap();
+            applySavedAvatarToCorePlayer();
+            positionPlayerAndCameraForMap();
+            updateAdoptMeHud();
+            fadeOutBootScreen();
+        }
+
+        function removeCoreNpcPlayer() {
+            const THREE = window.THREE;
+            if (typeof window.computerNetworkPlayer !== 'undefined' && window.computerNetworkPlayer) {
+                window.scene.remove(window.computerNetworkPlayer);
+            }
+
+            const stub = new THREE.Group();
+            ['head', 'torso'].forEach(meshName => {
+                const stubMesh = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), new THREE.MeshLambertMaterial({ color: 0x000000 }));
+                stubMesh.name = meshName;
+                stubMesh.position.y = meshName === 'head' ? 1.3 : 0.1;
+                stub.add(stubMesh);
+            });
+            stub.userData = { uid: "PeerInstance", tagLabel: "KittyPlayer" };
+            window.computerNetworkPlayer = stub; // not added to scene, so it's invisible -- exists only to satisfy Core's per-frame references
+
+            // Cancel the NPC's queued mock greeting if it hasn't fired yet, and silence it going forward
+            if (typeof window.triggerPeerMockResponse === 'function') {
+                window.triggerPeerMockResponse = function() { /* no-op: NPC removed for live map */ };
+            }
+        }
+
+        function buildAdoptMeMap() {
+            const scene = window.scene;
+            const THREE = window.THREE;
+
             scene.background = new THREE.Color(0xb3e5fc);
             scene.fog = new THREE.FogExp2(0xb3e5fc, 0.015);
-
-            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 7, 16);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            container.appendChild(renderer.domElement);
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
@@ -114,27 +251,29 @@
             mainSun.shadow.mapSize.height = 2048;
             scene.add(mainSun);
 
-            // Ground/Grass Base
+            if (window.renderer) {
+                window.renderer.shadowMap.enabled = true;
+                window.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            }
+
             const groundGeo = new THREE.PlaneGeometry(120, 120);
             const groundMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.9 });
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.01; 
             ground.receiveShadow = true;
             scene.add(ground);
 
-            // 🏡 PREMIUM MODULAR SPECIFICITY HOUSE BUILD
-            houseGroup = new THREE.Group();
+            const houseGroup = new THREE.Group();
 
-            // Main Core Foundation Structure
             const wallGeo = new THREE.BoxGeometry(8, 5.5, 6.5);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xfff9c4, roughness: 0.6 }); 
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xfff9c4, roughness: 0.6 });
             const mainWalls = new THREE.Mesh(wallGeo, wallMat);
             mainWalls.position.y = 2.75;
             mainWalls.castShadow = true;
             mainWalls.receiveShadow = true;
             houseGroup.add(mainWalls);
 
-            // Clean Overhead Wedge Roof Profile
             const roofShape = new THREE.Shape();
             roofShape.moveTo(-4.5, 0);
             roofShape.lineTo(0, 3);
@@ -145,11 +284,10 @@
             const roofGeo = new THREE.ExtrudeGeometry(roofShape, extrudeOpts);
             const roofMat = new THREE.MeshStandardMaterial({ color: 0xe57373, roughness: 0.4 });
             const roofMesh = new THREE.Mesh(roofGeo, roofMat);
-            roofMesh.position.set(0, 5.5, -3.5); 
+            roofMesh.position.set(0, 5.5, -3.5);
             roofMesh.castShadow = true;
             houseGroup.add(roofMesh);
 
-            // Intricate Panelled Modern Door Structure
             const doorFrameGeo = new THREE.BoxGeometry(1.6, 2.6, 0.15);
             const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
             const doorFrame = new THREE.Mesh(doorFrameGeo, doorFrameMat);
@@ -162,13 +300,11 @@
             door.position.set(0, 1.2, 3.3);
             houseGroup.add(door);
 
-            // Windows Layout (Left side and Right side frames)
             const winOuterGeo = new THREE.BoxGeometry(1.4, 1.4, 0.15);
             const winOuterMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
             const glassPaneGeo = new THREE.BoxGeometry(1.2, 1.2, 0.1);
             const glassPaneMat = new THREE.MeshStandardMaterial({ color: 0xe0f7fa, transparent: true, opacity: 0.5, roughness: 0.1 });
 
-            // Left Window Build
             const leftWinOuter = new THREE.Mesh(winOuterGeo, winOuterMat);
             leftWinOuter.position.set(-2.4, 3, 3.26);
             houseGroup.add(leftWinOuter);
@@ -176,7 +312,6 @@
             leftGlass.position.set(-2.4, 3, 3.3);
             houseGroup.add(leftGlass);
 
-            // Right Window Build
             const rightWinOuter = leftWinOuter.clone();
             rightWinOuter.position.x = 2.4;
             houseGroup.add(rightWinOuter);
@@ -184,101 +319,110 @@
             rightGlass.position.x = 2.4;
             houseGroup.add(rightGlass);
 
-            // Stone Path Approach
+            scene.add(houseGroup);
+            window.adoptMeHouseGroup = houseGroup;
+
             const pathwayGeo = new THREE.PlaneGeometry(2, 6);
             const pathwayMat = new THREE.MeshStandardMaterial({ color: 0xb0bec5, roughness: 0.9 });
             const path = new THREE.Mesh(pathwayGeo, pathwayMat);
             path.rotation.x = -Math.PI / 2;
-            path.position.set(0, 0.02, 6.2);
+            path.position.set(0, 0.005, 6.2);
             path.receiveShadow = true;
             scene.add(path);
 
-            scene.add(houseGroup);
-
-            // 👤 GENERATE CORE PLAYER FROM TRACKED ATTRIBUTES
-            buildCoreSystemAvatar();
-
-            camera.lookAt(0, 2.8, 0);
-            animateGameLoop();
+            hookIntoRenderLoop(() => {
+                if (window.adoptMeHouseGroup) {
+                    window.adoptMeHouseGroup.rotation.y = Math.sin(Date.now() * 0.0001) * 0.04;
+                }
+            });
         }
 
-        function buildCoreSystemAvatar() {
-            playerGroup = new THREE.Group();
-
-            // Head (Skin Hex)
-            const headGeo = new THREE.BoxGeometry(1, 1, 1);
-            const headMat = new THREE.MeshStandardMaterial({ color: avatarColors.skin, roughness: 0.7 });
-            headMesh = new THREE.Mesh(headGeo, headMat);
-            headMesh.position.y = 2.9;
-            headMesh.castShadow = true;
-            playerGroup.add(headMesh);
-
-            // Torso (Shirt Hex)
-            const torsoGeo = new THREE.BoxGeometry(1.5, 1.7, 0.85);
-            const shirtMat = new THREE.MeshStandardMaterial({ color: avatarColors.shirt, roughness: 0.7 });
-            torsoMesh = new THREE.Mesh(torsoGeo, shirtMat);
-            torsoMesh.position.y = 1.55;
-            torsoMesh.castShadow = true;
-            playerGroup.add(torsoMesh);
-
-            // Arms (Skin Hex)
-            const armGeo = new THREE.BoxGeometry(0.6, 1.7, 0.7);
-            leftArm = new THREE.Mesh(armGeo, headMat);
-            leftArm.position.set(-1.1, 1.55, 0);
-            leftArm.castShadow = true;
-            playerGroup.add(leftArm);
-
-            rightArm = new THREE.Mesh(armGeo, headMat);
-            rightArm.position.set(1.1, 1.55, 0);
-            rightArm.castShadow = true;
-            playerGroup.add(rightArm);
-
-            // Legs (Pants Hex)
-            const legGeo = new THREE.BoxGeometry(0.7, 1.5, 0.8);
-            const pantsMat = new THREE.MeshStandardMaterial({ color: avatarColors.pants, roughness: 0.7 });
-            leftLeg = new THREE.Mesh(legGeo, pantsMat);
-            leftLeg.position.set(-0.38, 0.75, 0);
-            leftLeg.castShadow = true;
-            playerGroup.add(leftLeg);
-
-            rightLeg = new THREE.Mesh(legGeo, pantsMat);
-            rightLeg.position.set(0.38, 0.75, 0);
-            rightLeg.castShadow = true;
-            playerGroup.add(rightLeg);
-
-            // Face character straight toward house entry point on the lane edge
-            playerGroup.position.set(0, 0.01, 8);
-            scene.add(playerGroup);
+       
+        function hookIntoRenderLoop(fn) {
+            if (typeof window.executeClientRenderTick !== 'function') return;
+            if (window.__adoptMePatchedRenderTick) {
+                window.__adoptMeFrameHooks.push(fn);
+                return;
+            }
+            window.__adoptMeFrameHooks = [fn];
+            const originalTick = window.executeClientRenderTick;
+            window.__adoptMePatchedRenderTick = true;
+            window.executeClientRenderTick = function() {
+                originalTick.apply(this, arguments);
+                window.__adoptMeFrameHooks.forEach(hookFn => hookFn());
+            };
         }
 
-        function animateGameLoop() {
-            requestAnimationFrame(animateGameLoop);
+        function applySavedAvatarToCorePlayer() {
+            const avatarColors = { skin: "#ffdbac", shirt: "#ff941a", pants: "#1e3799" };
+            let currentSessionUsername = "Guest";
 
-            const timer = Date.now() * 0.001;
+            try {
+                const activeSession = sessionStorage.getItem('mb_active_session');
+                const usersDB = JSON.parse(localStorage.getItem('mb_users_db')) || {};
 
-            if (houseGroup) {
-                houseGroup.rotation.y = Math.sin(timer * 0.1) * 0.04;
+                if (activeSession && usersDB[activeSession.toLowerCase()]) {
+                    const profile = usersDB[activeSession.toLowerCase()];
+                    currentSessionUsername = profile.user || "Player";
+
+                    if (profile.avatar) {
+                        avatarColors.skin = profile.avatar.skin || avatarColors.skin;
+                        avatarColors.shirt = profile.avatar.shirt || avatarColors.shirt;
+                        avatarColors.pants = profile.avatar.pants || avatarColors.pants;
+                    }
+                }
+            } catch (err) {
+                console.log("Profile storage unavailable, using default avatar colors.", err);
             }
 
-            if (playerGroup && leftArm && rightArm) {
-                // Subtle core idle leg/arm sway motions
-                leftArm.rotation.x = Math.sin(timer * 2.5) * 0.06;
-                rightArm.rotation.x = -Math.sin(timer * 2.5) * 0.06;
-                playerGroup.position.y = Math.abs(Math.sin(timer * 1.8)) * 0.03;
-            }
+            window.adoptMeUsername = currentSessionUsername;
 
-            renderer.render(scene, camera);
+            const player = window.localPlayerModel;
+            if (!player) return;
+
+            const skinMat = new window.THREE.MeshLambertMaterial({ color: avatarColors.skin });
+            const shirtMat = new window.THREE.MeshLambertMaterial({ color: avatarColors.shirt });
+            const pantsMat = new window.THREE.MeshLambertMaterial({ color: avatarColors.pants });
+
+            const head = player.getObjectByName('head');
+            const torso = player.getObjectByName('torso');
+            const leftArm = player.getObjectByName('leftArm');
+            const rightArm = player.getObjectByName('rightArm');
+            const leftLeg = player.getObjectByName('leftLeg');
+            const rightLeg = player.getObjectByName('rightLeg');
+
+            if (head) head.material = skinMat;
+            if (torso) torso.material = shirtMat;
+            if (leftArm) leftArm.material = skinMat;
+            if (rightArm) rightArm.material = skinMat;
+            if (leftLeg) leftLeg.material = pantsMat;
+            if (rightLeg) rightLeg.material = pantsMat;
         }
 
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+        function positionPlayerAndCameraForMap() {
+            if (window.localPlayerModel) {
+                window.localPlayerModel.position.set(0, 0, 8);
+                window.localPlayerModel.rotation.set(0, Math.PI, 0);
             }
-        });
+            if (window.camera) {
+                window.camera.position.set(0, 7, 16);
+                window.camera.lookAt(0, 2.8, 0);
+            }
+        }
 
-            window.addEventListener('DOMContentLoaded', initGameWorld);
+        function updateAdoptMeHud() {
+            const label = document.getElementById('hud-user-label');
+            if (label) {
+                label.textContent = `Active User: ${window.adoptMeUsername || "Guest"}`;
+            }
+        }
+
+        function fadeOutBootScreen() {
+            const bootScreen = document.getElementById('boot-loader-screen');
+            if (!bootScreen) return;
+            bootScreen.classList.add('fade-out');
+            setTimeout(() => bootScreen.remove(), 350);
+        }
     </script>
 </body>
 </html>
