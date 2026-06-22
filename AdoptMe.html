@@ -4,1656 +4,1163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adopt Me! | MeowBlox</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #1a0a2e;
             overflow: hidden;
-            background: #020100;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
         }
 
-        /* Shown only until Core.html has been fetched + mounted */
-        #boot-loader-screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #020100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            z-index: 9999;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #fff;
-            transition: opacity 0.3s ease;
+        #game-canvas { width: 100vw; height: 100vh; display: block; }
+
+        /* ── HUD ── */
+        #hud {
+            position: absolute;
+            top: 16px; left: 16px;
+            display: flex; flex-direction: column; gap: 10px;
+            pointer-events: none;
+            z-index: 20;
         }
-        #boot-loader-screen.fade-out { opacity: 0; pointer-events: none; }
-        .boot-spinner {
-            width: 46px;
-            height: 46px;
-            border: 4px solid #2e1803;
-            border-top-color: #ff941a;
-            border-radius: 50%;
-            animation: boot-spin 0.8s linear infinite;
+
+        .hud-card {
+            background: rgba(15, 8, 30, 0.82);
+            border: 1.5px solid rgba(180, 120, 255, 0.45);
+            border-radius: 12px;
+            padding: 10px 16px;
+            backdrop-filter: blur(8px);
+            pointer-events: none;
         }
-        @keyframes boot-spin { to { transform: rotate(360deg); } }
-        #boot-loader-screen .boot-label {
-            font-size: 13px;
+
+        #hud-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #c084fc;
             letter-spacing: 0.5px;
-            color: #c9a06b;
-            text-transform: uppercase;
         }
-        #boot-loader-screen .boot-error {
-            color: #e74c3c;
-            font-size: 13px;
-            max-width: 360px;
-            text-align: center;
+
+        #hud-user {
+            font-size: 11px;
+            color: #a78bfa;
+            margin-top: 3px;
+        }
+
+        #hud-bucks {
+            font-size: 14px;
+            font-weight: 700;
+            color: #86efac;
+        }
+
+        /* ── Pet needs bar ── */
+        #needs-panel {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: rgba(15, 8, 30, 0.82);
+            border: 1.5px solid rgba(180, 120, 255, 0.45);
+            border-radius: 12px;
+            padding: 12px 16px;
+            backdrop-filter: blur(8px);
+            min-width: 170px;
+            z-index: 20;
             display: none;
         }
 
-        /* Adopt Me specific HUD, layered above the Core HUD */
-        .game-hud {
-            position: absolute;
-            top: 15px;
-            left: 70px;
-            background: rgba(13, 6, 0, 0.85);
-            padding: 10px 18px;
-            border-radius: 8px;
-            color: #fff;
-            border: 2px solid #ff941a;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-            pointer-events: none;
-            z-index: 10;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .game-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #ff941a;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        #hud-user-label {
-            font-size: 11px;
-            color: #ccc;
-            margin-top: 3px;
-        }
-        #hud-bucks-label {
-            font-size: 13px;
-            color: #7ed957;
-            font-weight: bold;
-            margin-top: 5px;
+        #needs-panel .pet-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #c084fc;
+            margin-bottom: 9px;
         }
 
-        /* Interaction prompt */
-        .interact-prompt {
-            position: absolute;
-            bottom: 26%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(13, 6, 0, 0.9);
-            border: 2px solid #ff941a;
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            z-index: 15;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-        .interact-prompt kbd {
-            background: #ff941a;
-            color: #1a0e02;
-            padding: 1px 7px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        .hidden { display: none !important; }
-
-        /* Shop / Nursery panels */
-        .game-panel {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 92%;
-            max-width: 420px;
-            max-height: 70vh;
-            background: rgba(13, 6, 0, 0.95);
-            border: 2px solid #ff941a;
-            border-radius: 12px;
-            z-index: 40;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #fff;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            display: flex;
-            flex-direction: column;
-        }
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 18px;
-            border-bottom: 1px solid #2e1803;
-            font-weight: bold;
-            font-size: 16px;
-            color: #ff941a;
-        }
-        .panel-close-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-        .panel-close-btn:hover { background: rgba(255,255,255,0.1); }
-        .panel-body {
-            padding: 14px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .shop-item-row {
+        .need-row {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid #2e1803;
-            border-radius: 8px;
-            padding: 10px 14px;
+            gap: 8px;
+            margin-bottom: 6px;
         }
-        .shop-item-info { display: flex; flex-direction: column; gap: 2px; }
-        .shop-item-name { font-weight: bold; font-size: 14px; }
-        .shop-item-price { font-size: 12px; color: #7ed957; }
-        .shop-buy-btn {
-            background: #ff941a;
-            color: #1a0e02;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-        .shop-buy-btn:hover { background: #e07b0d; }
-        .shop-buy-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
 
-        /* Active pet needs HUD */
-        .pet-needs-hud {
-            position: absolute;
-            top: 90px;
-            left: 15px;
-            width: 180px;
-            background: rgba(13, 6, 0, 0.85);
-            border: 2px solid #ff941a;
-            border-radius: 8px;
-            padding: 10px 14px;
-            z-index: 10;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #fff;
-        }
-        .pet-needs-title { font-weight: bold; font-size: 13px; margin-bottom: 8px; color: #ff941a; }
-        .need-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
         .need-row:last-child { margin-bottom: 0; }
-        .need-bar {
+
+        .need-icon { font-size: 13px; width: 18px; text-align: center; }
+
+        .need-track {
             flex: 1;
-            height: 8px;
-            background: #2e1803;
+            height: 7px;
+            background: rgba(255,255,255,0.1);
             border-radius: 4px;
             overflow: hidden;
         }
+
         .need-fill {
             height: 100%;
-            background: linear-gradient(90deg, #ff941a, #7ed957);
-            width: 100%;
-            transition: width 0.3s ease;
+            border-radius: 4px;
+            transition: width 0.4s ease;
         }
 
-        /* Toasts */
-        #toast-container {
+        #fill-hunger { background: linear-gradient(90deg, #fb923c, #fbbf24); }
+        #fill-energy { background: linear-gradient(90deg, #60a5fa, #a78bfa); }
+        #fill-fun    { background: linear-gradient(90deg, #f472b6, #c084fc); }
+
+        /* ── Floating E prompt ── */
+        #e-prompt {
             position: absolute;
-            top: 15px;
-            right: 15px;
+            bottom: 28%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 8, 30, 0.9);
+            border: 1.5px solid #a78bfa;
+            color: #e9d5ff;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 20px;
+            display: none;
+            pointer-events: none;
+            z-index: 20;
+            white-space: nowrap;
+        }
+
+        #e-prompt kbd {
+            background: #7c3aed;
+            color: #fff;
+            padding: 1px 7px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        /* ── Panels ── */
+        .panel-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+        }
+
+        .panel-box {
+            background: #0f0820;
+            border: 1.5px solid rgba(180,120,255,0.5);
+            border-radius: 16px;
+            width: 92%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 0 0 8px 0;
+            box-shadow: 0 20px 60px rgba(124,58,237,0.25);
+        }
+
+        .panel-head {
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid rgba(180,120,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-head h2 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #c084fc;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #a78bfa;
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+
+        .close-btn:hover { color: #fff; }
+
+        .panel-body { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+
+        .shop-row {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(180,120,255,0.15);
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .shop-info { display: flex; flex-direction: column; gap: 3px; }
+        .shop-name { font-size: 13px; font-weight: 600; color: #e9d5ff; }
+        .shop-sub  { font-size: 11px; color: #a78bfa; }
+        .shop-price { font-size: 11px; color: #86efac; font-weight: 600; }
+
+        .buy-btn {
+            background: #7c3aed;
+            color: #fff;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .buy-btn:hover { background: #6d28d9; }
+        .buy-btn:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+
+        .fuse-btn {
+            background: linear-gradient(135deg, #0ea5e9, #7c3aed);
+            color: #fff;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6b7280;
+            padding: 4px 0 2px;
+        }
+
+        .divider { border: none; border-top: 1px solid rgba(180,120,255,0.12); }
+
+        /* ── Toast ── */
+        #toast-wrap {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
             flex-direction: column;
+            align-items: center;
             gap: 8px;
             z-index: 50;
             pointer-events: none;
         }
+
         .toast {
-            background: rgba(13, 6, 0, 0.95);
-            border: 2px solid #ff941a;
-            border-radius: 8px;
-            padding: 10px 16px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #fff;
+            background: rgba(15, 8, 30, 0.95);
+            border: 1.5px solid rgba(180,120,255,0.5);
+            color: #e9d5ff;
             font-size: 13px;
-            font-weight: bold;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-            animation: toast-in 0.25s ease;
+            font-weight: 600;
+            padding: 9px 20px;
+            border-radius: 20px;
+            white-space: nowrap;
+            animation: toastIn 0.2s ease;
         }
-        @keyframes toast-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-        .toast.toast-fade { opacity: 0; transition: opacity 0.3s ease; }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Controls legend ── */
+        #controls-hint {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(15, 8, 30, 0.7);
+            border: 1px solid rgba(180,120,255,0.2);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 11px;
+            color: #6b7280;
+            pointer-events: none;
+            z-index: 20;
+            line-height: 1.7;
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Boot screen shown while Core.html is fetched and mounted -->
-    <div id="boot-loader-screen">
-        <div class="boot-spinner"></div>
-        <div class="boot-label">Loading MeowEngine Core Module…</div>
-        <div class="boot-error" id="boot-error-msg">
-            Couldn't load the core client module. Check that Core.html is reachable from this page, then refresh.
+<div id="game-canvas"></div>
+
+<!-- HUD -->
+<div id="hud">
+    <div class="hud-card">
+        <div id="hud-title">🏡 Adopt Me!</div>
+        <div id="hud-user">Guest</div>
+    </div>
+    <div class="hud-card">
+        <div id="hud-bucks">💚 100 Bucks</div>
+    </div>
+</div>
+
+<!-- Pet needs -->
+<div id="needs-panel">
+    <div class="pet-name" id="needs-name">Pet</div>
+    <div class="need-row">
+        <span class="need-icon">🍖</span>
+        <div class="need-track"><div class="need-fill" id="fill-hunger" style="width:100%"></div></div>
+    </div>
+    <div class="need-row">
+        <span class="need-icon">⚡</span>
+        <div class="need-track"><div class="need-fill" id="fill-energy" style="width:100%"></div></div>
+    </div>
+    <div class="need-row">
+        <span class="need-icon">🎾</span>
+        <div class="need-track"><div class="need-fill" id="fill-fun" style="width:100%"></div></div>
+    </div>
+</div>
+
+<!-- E prompt -->
+<div id="e-prompt">Press <kbd>E</kbd> to <span id="e-action">interact</span></div>
+
+<!-- Nursery panel -->
+<div id="nursery-panel" class="panel-overlay hidden">
+    <div class="panel-box">
+        <div class="panel-head">
+            <h2>🥚 Nursery</h2>
+            <button class="close-btn" onclick="closePanel()">×</button>
         </div>
+        <div class="panel-body" id="nursery-body"></div>
     </div>
+</div>
 
-    <!-- Adopt Me's own HUD overlay -- sits on top of whatever Core.html renders -->
-    <div class="game-hud">
-        <div class="game-title">🏡 Adopt Me!</div>
-        <div id="hud-user-label">Loading Profile Engine...</div>
-        <div id="hud-bucks-label">💵 Bucks: 0</div>
-    </div>
-
-    <!-- Floating "Press E" interaction prompt, shown when near something interactable -->
-    <div id="interact-prompt" class="interact-prompt hidden">Press <kbd>E</kbd> to interact</div>
-
-    <!-- Nursery egg-buying panel -->
-    <div id="nursery-panel" class="game-panel hidden">
-        <div class="panel-header">
-            <span>🥚 Nursery</span>
-            <button class="panel-close-btn" onclick="closeAllPanels()">✕</button>
+<!-- Pet care panel -->
+<div id="care-panel" class="panel-overlay hidden">
+    <div class="panel-box">
+        <div class="panel-head">
+            <h2 id="care-title">Care for Pet</h2>
+            <button class="close-btn" onclick="closePanel()">×</button>
         </div>
-        <div class="panel-body" id="nursery-egg-list"></div>
+        <div class="panel-body" id="care-body"></div>
     </div>
+</div>
 
-    <!-- Furniture shop panel -->
-    <div id="furniture-panel" class="game-panel hidden">
-        <div class="panel-header">
-            <span>🛋️ Furniture Shop</span>
-            <button class="panel-close-btn" onclick="closeAllPanels()">✕</button>
-        </div>
-        <div class="panel-body" id="furniture-item-list"></div>
-    </div>
+<!-- Toasts -->
+<div id="toast-wrap"></div>
 
-    <!-- Active pet needs bar, shown when player has a pet out -->
-    <div id="pet-needs-hud" class="pet-needs-hud hidden">
-        <div class="pet-needs-title" id="pet-needs-name">Pet</div>
-        <div class="need-row"><span>🍖</span><div class="need-bar"><div class="need-fill" id="need-fill-hunger"></div></div></div>
-        <div class="need-row"><span>⚡</span><div class="need-bar"><div class="need-fill" id="need-fill-energy"></div></div></div>
-        <div class="need-row"><span>🎾</span><div class="need-bar"><div class="need-fill" id="need-fill-fun"></div></div></div>
-    </div>
+<!-- Controls -->
+<div id="controls-hint">WASD — Move &nbsp;·&nbsp; E — Interact</div>
 
-    <!-- Toast notifications (Bucks earned, pet hatched, etc.) -->
-    <div id="toast-container"></div>
+<script>
+    // ─────────────────────────────────────────────
+    //  SAVE / PROFILE
+    // ─────────────────────────────────────────────
+    let username = "Guest";
+    let avatarColors = { skin: "#f1c27d", shirt: "#7c3aed", pants: "#1e3799" };
 
-    <script>
-        /*
-         * ============================================================
-         *  ADOPT ME — MAP MODULE
-         * ------------------------------------------------------------
-         *  This file no longer ships its own renderer, avatar rig,
-         *  HUD chat, or controls. All of that lives in Core.html,
-         *  MeowBlox's shared runtime client module.
-         *
-         *  Boot sequence:
-         *   1. Fetch Core.html (same-folder relative path).
-         *   2. Inject its <style> + <body> + <script> into this page,
-         *      so the shared HUD/canvas/chat/emote/esc-menu mount here.
-         *   3. Call Core's initGameEngineEnvironment() + setupInputHooks()
-         *      directly. (Core normally runs these from its own
-         *      DOMContentLoaded listener, but that event is one-shot per
-         *      document and has already fired by the time we inject Core's
-         *      script, so its listener would never run on its own.) This
-         *      builds the THREE.js scene/camera/renderer/localPlayerModel
-         *      and starts Core's render loop, synchronously.
-         *   4. With Core's globals now ready, this module hooks in:
-         *       - removes the KittyPlayer NPC + its mock greeting
-         *       - adds the Adopt Me house/ground/path to Core's scene
-         *       - recolors Core's player avatar from saved profile data
-         *       - repositions the camera/player for this map
-         *   5. Adopt Me's HUD (top-left, offset next to Core's logo)
-         *      shows the active username on top of Core's own HUD.
-         * ============================================================
-         */
+    function loadProfile() {
+        try {
+            const key = sessionStorage.getItem('mb_active_session');
+            const db  = JSON.parse(localStorage.getItem('mb_users_db') || '{}');
+            if (key && db[key]) {
+                const p = db[key];
+                username = p.user || "Guest";
+                if (p.avatar) {
+                    avatarColors.skin  = p.avatar.skin  || avatarColors.skin;
+                    avatarColors.shirt = p.avatar.shirt || avatarColors.shirt;
+                    avatarColors.pants = p.avatar.pants || avatarColors.pants;
+                }
+            }
+        } catch(_) {}
+        document.getElementById('hud-user').textContent = username;
+    }
 
-        const CORE_MODULE_PATH = "Core.html"; // same-folder relative path, set per deployment
+    const SAVE_KEY = () => 'mb_am_' + username.toLowerCase();
+    let gs = null;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            loadCoreModule(CORE_MODULE_PATH);
+    function defaultSave() {
+        return { bucks: 100, pets: [], activePet: null, eggs: [] };
+    }
+
+    function loadSave() {
+        try {
+            const raw = localStorage.getItem(SAVE_KEY());
+            gs = raw ? Object.assign(defaultSave(), JSON.parse(raw)) : defaultSave();
+        } catch(_) { gs = defaultSave(); }
+    }
+
+    let _saveTimer = null;
+    function save() {
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(() => {
+            try { localStorage.setItem(SAVE_KEY(), JSON.stringify(gs)); } catch(_) {}
+        }, 500);
+    }
+
+    function updateBucksHud() {
+        document.getElementById('hud-bucks').textContent = `💚 ${gs.bucks} Bucks`;
+    }
+
+    function addBucks(n) { gs.bucks += n; updateBucksHud(); save(); }
+
+    function spendBucks(n) {
+        if (gs.bucks < n) { toast("Not enough Bucks!"); return false; }
+        gs.bucks -= n; updateBucksHud(); save(); return true;
+    }
+
+    // ─────────────────────────────────────────────
+    //  TOAST
+    // ─────────────────────────────────────────────
+    function toast(msg) {
+        const wrap = document.getElementById('toast-wrap');
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.textContent = msg;
+        wrap.appendChild(el);
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transition = 'opacity 0.3s';
+            setTimeout(() => el.remove(), 320);
+        }, 2500);
+    }
+
+    // ─────────────────────────────────────────────
+    //  PET SPECIES
+    // ─────────────────────────────────────────────
+    const SPECIES = {
+        cat:     { name:"Cat",     emoji:"🐱", price:50,  rarity:"Common",    body:0xe2b87a, accent:0xfde6c4 },
+        dog:     { name:"Dog",     emoji:"🐶", price:50,  rarity:"Common",    body:0x8b6343, accent:0xf5deb3 },
+        unicorn: { name:"Unicorn", emoji:"🦄", price:600, rarity:"Legendary", body:0xe879f9, accent:0xfdf4ff },
+    };
+
+    const STAGES = ["Newborn","Junior","Teen","Full Grown"];
+    const XP_PER_STAGE = [25, 50, 90];
+    const HATCH_MS = 15000;
+    const DECAY = 0.5;
+    const COOLDOWN = 4000;
+
+    function newPet(species) {
+        return {
+            id: 'p' + Date.now(),
+            species,
+            stage: 0, xp: 0,
+            hunger: 100, energy: 100, fun: 100,
+            isNeon: false, isMegaNeon: false,
+            lastCare: 0
+        };
+    }
+
+    function getActive() {
+        if (!gs.activePet) return null;
+        return gs.pets.find(p => p.id === gs.activePet) || null;
+    }
+
+    // ─────────────────────────────────────────────
+    //  THREE.JS SCENE
+    // ─────────────────────────────────────────────
+    let scene, camera, renderer, clock;
+    let playerGroup, petGroup = null;
+    let petMeshMap = new Map();
+
+    const KEYS = { w:false, a:false, s:false, d:false };
+    const SPEED = 5;
+    const CAM_OFFSET = new THREE.Vector3(0, 8, 14);
+
+    function initScene() {
+        const container = document.getElementById('game-canvas');
+        scene    = new THREE.Scene();
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.85;
+        container.appendChild(renderer.domElement);
+
+        camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.set(0, 8, 14);
+
+        clock  = new THREE.Clock();
+
+        // Sky gradient background
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.FogExp2(0xadd8e6, 0.012);
+
+        // Lighting — soft, not washed out
+        scene.add(new THREE.AmbientLight(0xfff8f0, 0.45));
+
+        const sun = new THREE.DirectionalLight(0xfffbe8, 1.1);
+        sun.position.set(20, 40, 20);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.near = 0.5;
+        sun.shadow.camera.far  = 200;
+        sun.shadow.camera.left = sun.shadow.camera.bottom = -50;
+        sun.shadow.camera.right = sun.shadow.camera.top  =  50;
+        scene.add(sun);
+
+        const fill = new THREE.DirectionalLight(0xd0e8ff, 0.3);
+        fill.position.set(-15, 10, -10);
+        scene.add(fill);
+
+        buildWorld();
+        buildPlayer();
+        if (getActive()) spawnPetMesh(getActive());
+        renderNurseryPanel();
+    }
+
+    // ─────────────────────────────────────────────
+    //  WORLD
+    // ─────────────────────────────────────────────
+    let nurseryMesh;
+
+    function buildWorld() {
+        // Ground
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(200, 200),
+            new THREE.MeshStandardMaterial({ color: 0x5abf5e, roughness: 0.95, metalness: 0 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Stone path
+        const path = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.4, 8),
+            new THREE.MeshStandardMaterial({ color: 0xbdbdbd, roughness: 0.9 })
+        );
+        path.rotation.x = -Math.PI / 2;
+        path.position.set(0, 0.01, 6);
+        path.receiveShadow = true;
+        scene.add(path);
+
+        buildHouse();
+        buildNursery();
+        buildTrees();
+    }
+
+    function buildHouse() {
+        const h = new THREE.Group();
+
+        // Walls
+        const walls = new THREE.Mesh(
+            new THREE.BoxGeometry(9, 5.5, 7),
+            new THREE.MeshStandardMaterial({ color: 0xfff8e7, roughness: 0.65 })
+        );
+        walls.position.y = 2.75;
+        walls.castShadow = walls.receiveShadow = true;
+        h.add(walls);
+
+        // Roof
+        const roofS = new THREE.Shape();
+        roofS.moveTo(-5, 0); roofS.lineTo(0, 3.2); roofS.lineTo(5, 0); roofS.lineTo(-5, 0);
+        const roof = new THREE.Mesh(
+            new THREE.ExtrudeGeometry(roofS, { depth: 7.6, bevelEnabled: false }),
+            new THREE.MeshStandardMaterial({ color: 0xd9534f, roughness: 0.5 })
+        );
+        roof.position.set(0, 5.5, -3.8);
+        roof.castShadow = true;
+        h.add(roof);
+
+        // Door
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(1.4, 2.6, 0.12),
+            new THREE.MeshStandardMaterial({ color: 0x5b9bff, roughness: 0.4 })
+        );
+        door.position.set(0, 1.3, 3.51);
+        h.add(door);
+
+        const doorFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(1.8, 2.9, 0.08),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 })
+        );
+        doorFrame.position.set(0, 1.45, 3.5);
+        h.add(doorFrame);
+
+        // Windows
+        [[-2.8, 3, 3.51], [2.8, 3, 3.51]].forEach(([x, y, z]) => {
+            const frame = new THREE.Mesh(
+                new THREE.BoxGeometry(1.6, 1.6, 0.08),
+                new THREE.MeshStandardMaterial({ color: 0xffffff })
+            );
+            frame.position.set(x, y, z);
+            h.add(frame);
+            const glass = new THREE.Mesh(
+                new THREE.BoxGeometry(1.3, 1.3, 0.06),
+                new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.55, roughness: 0.05 })
+            );
+            glass.position.set(x, y, z + 0.02);
+            h.add(glass);
         });
 
-        async function loadCoreModule(path) {
-            try {
-                const res = await fetch(path, { cache: "no-cache" });
-                if (!res.ok) throw new Error(`Core module fetch failed: HTTP ${res.status}`);
-                let html = await res.text();
-                html = exposeCoreStateGlobals(html);
-                mountCoreModule(html);
-            } catch (err) {
-                console.error("Failed to load Core.html:", err);
-                document.getElementById('boot-error-msg').style.display = 'block';
-                document.querySelector('#boot-loader-screen .boot-label').textContent = "Core module failed to load.";
-            }
-        }
-
-        // --- Make Core's top-level state variables reachable from AdoptMe's own <script> block ---
-        //
-        // Core.html declares its engine state with top-level `let` inside its inline <script> tag:
-        //   let scene, camera, renderer, clock;
-        //   let localPlayerModel, computerNetworkPlayer;
-        //
-        // When that script is injected into this page, browsers DO share one global scope across
-        // sibling <script> tags for `var` and `function` declarations (both attach to `window`),
-        // but `let`/`const` declared at the top level of one <script> block are scoped to that
-        // block only -- invisible even to other inline <script> tags in the same document. Since
-        // AdoptMe's map-building code lives in its own separate <script> tag, it can never read
-        // `scene`, `camera`, etc. as bare identifiers, and `window.scene` would stay undefined too.
-        //
-        // Fix: do a narrow, targeted text substitution -- converting just these two specific
-        // declaration lines from `let` to `var` -- before injecting Core's source. `var` at top
-        // level of a script DOES attach to `window`, making these reachable as window.scene,
-        // window.camera, etc. Everything else in Core.html is left completely untouched; this
-        // does not modify the Core.html file on disk, only the in-memory copy used for injection.
-        function exposeCoreStateGlobals(html) {
-            const targetedDeclarations = [
-                'let scene, camera, renderer, clock;',
-                'let localPlayerModel, computerNetworkPlayer;'
-            ];
-            let patched = html;
-            targetedDeclarations.forEach(declLine => {
-                if (patched.includes(declLine)) {
-                    patched = patched.replace(declLine, declLine.replace('let', 'var'));
-                } else {
-                    console.warn(
-                        `AdoptMe: expected declaration not found in Core.html ("${declLine}"). ` +
-                        `Core.html may have changed -- window.scene/camera/etc. might not be reachable.`
-                    );
-                }
-            });
-            return patched;
-        }
-
-        function mountCoreModule(rawHtml) {
-            // Parse Core.html's markup so we can lift out exactly what we need
-            const parsedDoc = new DOMParser().parseFromString(rawHtml, "text/html");
-
-            // 1) Pull in Core's <style> blocks so its HUD/canvas/chat/emote CSS applies here
-            parsedDoc.querySelectorAll('style').forEach(styleNode => {
-                document.head.appendChild(styleNode.cloneNode(true));
-            });
-
-            // 2) Pull in Core's external script tags (e.g. three.js CDN) and load them in order,
-            //    waiting for each to finish before moving to the next.
-            const externalScripts = Array.from(parsedDoc.querySelectorAll('script[src]'));
-
-            // 3) Pull in Core's body content (canvas mount point, HUD markup, chat, emote wheel, esc menu)
-            const coreBodyFragment = document.createDocumentFragment();
-            Array.from(parsedDoc.body.children).forEach(node => {
-                // Skip inline <script> here; we inject those last, after body is in the DOM
-                if (node.tagName === 'SCRIPT') return;
-                coreBodyFragment.appendChild(node.cloneNode(true));
-            });
-
-            const coreMountPoint = document.createElement('div');
-            coreMountPoint.id = 'core-module-mount';
-            coreMountPoint.appendChild(coreBodyFragment);
-            document.body.appendChild(coreMountPoint);
-
-            // 4) Pull in Core's inline <script> blocks (the actual engine code)
-            const inlineScripts = Array.from(parsedDoc.querySelectorAll('script:not([src])'))
-                .map(s => s.textContent);
-
-            loadScriptsSequentially(externalScripts.map(s => s.getAttribute('src')))
-                .then(() => {
-                    // Run Core's inline engine code now that THREE.js (and any other deps) are ready.
-                    // This defines initGameEngineEnvironment(), setupInputHooks(), and all the other
-                    // Core functions/globals as window-level identifiers (they're declared with
-                    // `function` at script top-level, so they attach to window).
-                    inlineScripts.forEach(code => {
-                        const scriptEl = document.createElement('script');
-                        scriptEl.textContent = code;
-                        document.body.appendChild(scriptEl);
-                    });
-
-                    // IMPORTANT: Core.html registers its own `window.addEventListener('DOMContentLoaded', ...)`
-                    // to call initGameEngineEnvironment() + setupInputHooks(). DOMContentLoaded is a
-                    // one-shot event for this document and has ALREADY fired by the time we reach this
-                    // point (we're running from AdoptMe's own DOMContentLoaded handler) -- so Core's
-                    // listener registered just above will never be invoked by the browser. We call its
-                    // init functions directly instead.
-                    if (typeof window.initGameEngineEnvironment === 'function') {
-                        window.initGameEngineEnvironment();
-                    } else {
-                        throw new Error("Core module loaded but initGameEngineEnvironment() was not found.");
-                    }
-                    if (typeof window.setupInputHooks === 'function') {
-                        window.setupInputHooks();
-                    }
-
-                    // Core's init function synchronously creates scene/camera/renderer/localPlayerModel
-                    // and starts its own render loop before returning, so we can proceed immediately --
-                    // no polling needed.
-                    onCoreEngineReady();
-                })
-                .catch(err => {
-                    console.error("Failed to load Core module:", err);
-                    document.getElementById('boot-error-msg').style.display = 'block';
-                    document.querySelector('#boot-loader-screen .boot-label').textContent = "Core module failed to load.";
-                });
-        }
-
-        function loadScriptsSequentially(srcList) {
-            return srcList.reduce((chain, src) => {
-                return chain.then(() => new Promise((resolve, reject) => {
-                    // Avoid re-loading a script that's already on the page
-                    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-                    const el = document.createElement('script');
-                    el.src = src;
-                    el.onload = resolve;
-                    el.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-                    document.body.appendChild(el);
-                }));
-            }, Promise.resolve());
-        }
-
-        function onCoreEngineReady() {
-            removeCoreNpcPlayer();
-            buildAdoptMeMap();
-            applySavedAvatarToCorePlayer();
-            positionPlayerAndCameraForMap();
-            updateAdoptMeHud();
-
-            // --- Gameplay systems (Bucks economy, pets, house interactions) ---
-            initSaveSystem();
-            initEconomyHud();
-            initNursery();
-            initInteractionPrompt();
-            initInteractKeyHook();
-            initPetNeedsLoop();
-            initHouseDoorZone();
-            initFurnitureShop();
-            renderOwnedFurniture();
-
-            // Expose game state and subsystem handles on window for future multiplayer integration
-            // and developer tooling. Functions declared with `function` at top level already attach
-            // to window automatically; these are the let/const-declared state that wouldn't be
-            // visible otherwise.
-            window.activePetMeshes = activePetMeshes;
-            window.interactionZones = interactionZones;
-            window.DOOR_INSIDE_POS = DOOR_INSIDE_POS;
-            window.DOOR_OUTSIDE_POS = DOOR_OUTSIDE_POS;
-            window.isInsideHouse = false; // initial value; kept in sync by setHouseInteriorVisible
-
-            fadeOutBootScreen();
-        }
-
-        // --- Strip Core's built-in test NPC + its mock chat greeting; this is a real map, not a test instance ---
-        //
-        // NOTE: Core's own render loop (executeClientRenderTick) unconditionally calls
-        // computerNetworkPlayer.getObjectByName("torso") / .getObjectByName("head") every single
-        // frame with no null-check -- it assumes that object always exists. Simply setting
-        // window.computerNetworkPlayer = null would crash Core's loop on the very next frame.
-        // Instead we remove the NPC visually from the scene but leave a lightweight, invisible
-        // stand-in group with the same named child meshes Core expects, so its existing per-frame
-        // code keeps working unmodified.
-        function removeCoreNpcPlayer() {
-            const THREE = window.THREE;
-            if (typeof window.computerNetworkPlayer !== 'undefined' && window.computerNetworkPlayer) {
-                window.scene.remove(window.computerNetworkPlayer);
-            }
-
-            const stub = new THREE.Group();
-            ['head', 'torso'].forEach(meshName => {
-                const stubMesh = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), new THREE.MeshLambertMaterial({ color: 0x000000 }));
-                stubMesh.name = meshName;
-                stubMesh.position.y = meshName === 'head' ? 1.3 : 0.1;
-                stub.add(stubMesh);
-            });
-            stub.userData = { uid: "PeerInstance", tagLabel: "KittyPlayer" };
-            window.computerNetworkPlayer = stub; // not added to scene, so it's invisible -- exists only to satisfy Core's per-frame references
-
-            // Cancel the NPC's queued mock greeting if it hasn't fired yet, and silence it going forward
-            if (typeof window.triggerPeerMockResponse === 'function') {
-                window.triggerPeerMockResponse = function() { /* no-op: NPC removed for live map */ };
-            }
-        }
-
-        // --- Build the Adopt Me house + ground + path directly into Core's existing scene ---
-        function buildAdoptMeMap() {
-            const scene = window.scene;
-            const THREE = window.THREE;
-
-            // Swap Core's default void/grid backdrop for an outdoor sky, since this map is outdoors
-            scene.background = new THREE.Color(0xb3e5fc);
-            scene.fog = new THREE.FogExp2(0xb3e5fc, 0.015);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-
-            const mainSun = new THREE.DirectionalLight(0xfffdf2, 0.9);
-            mainSun.position.set(15, 30, 15);
-            mainSun.castShadow = true;
-            mainSun.shadow.mapSize.width = 2048;
-            mainSun.shadow.mapSize.height = 2048;
-            scene.add(mainSun);
-
-            if (window.renderer) {
-                window.renderer.shadowMap.enabled = true;
-                window.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            }
-
-            // Ground/Grass Base
-            const groundGeo = new THREE.PlaneGeometry(120, 120);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.01; // sit just below Core's grid plane
-            ground.receiveShadow = true;
-            scene.add(ground);
-            window.adoptMeGroundMesh = ground; // exposed so the house interior toggle can hide/show it
-
-            // House
-            const houseGroup = new THREE.Group();
-
-            const wallGeo = new THREE.BoxGeometry(8, 5.5, 6.5);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xfff9c4, roughness: 0.6 });
-            const mainWalls = new THREE.Mesh(wallGeo, wallMat);
-            mainWalls.position.y = 2.75;
-            mainWalls.castShadow = true;
-            mainWalls.receiveShadow = true;
-            houseGroup.add(mainWalls);
-
-            const roofShape = new THREE.Shape();
-            roofShape.moveTo(-4.5, 0);
-            roofShape.lineTo(0, 3);
-            roofShape.lineTo(4.5, 0);
-            roofShape.lineTo(-4.5, 0);
-
-            const extrudeOpts = { depth: 7, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, steps: 1 };
-            const roofGeo = new THREE.ExtrudeGeometry(roofShape, extrudeOpts);
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0xe57373, roughness: 0.4 });
-            const roofMesh = new THREE.Mesh(roofGeo, roofMat);
-            roofMesh.position.set(0, 5.5, -3.5);
-            roofMesh.castShadow = true;
-            houseGroup.add(roofMesh);
-
-            const doorFrameGeo = new THREE.BoxGeometry(1.6, 2.6, 0.15);
-            const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            const doorFrame = new THREE.Mesh(doorFrameGeo, doorFrameMat);
-            doorFrame.position.set(0, 1.3, 3.26);
-            houseGroup.add(doorFrame);
-
-            const doorGeo = new THREE.BoxGeometry(1.3, 2.4, 0.1);
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0x42a5f5, roughness: 0.4 });
-            const door = new THREE.Mesh(doorGeo, doorMat);
-            door.position.set(0, 1.2, 3.3);
-            houseGroup.add(door);
-
-            const winOuterGeo = new THREE.BoxGeometry(1.4, 1.4, 0.15);
-            const winOuterMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            const glassPaneGeo = new THREE.BoxGeometry(1.2, 1.2, 0.1);
-            const glassPaneMat = new THREE.MeshStandardMaterial({ color: 0xe0f7fa, transparent: true, opacity: 0.5, roughness: 0.1 });
-
-            const leftWinOuter = new THREE.Mesh(winOuterGeo, winOuterMat);
-            leftWinOuter.position.set(-2.4, 3, 3.26);
-            houseGroup.add(leftWinOuter);
-            const leftGlass = new THREE.Mesh(glassPaneGeo, glassPaneMat);
-            leftGlass.position.set(-2.4, 3, 3.3);
-            houseGroup.add(leftGlass);
-
-            const rightWinOuter = leftWinOuter.clone();
-            rightWinOuter.position.x = 2.4;
-            houseGroup.add(rightWinOuter);
-            const rightGlass = leftGlass.clone();
-            rightGlass.position.x = 2.4;
-            houseGroup.add(rightGlass);
-
-            scene.add(houseGroup);
-            window.adoptMeHouseGroup = houseGroup; // exposed for later features (doors, interiors, etc.)
-
-            // Stone Path Approach
-            const pathwayGeo = new THREE.PlaneGeometry(2, 6);
-            const pathwayMat = new THREE.MeshStandardMaterial({ color: 0xb0bec5, roughness: 0.9 });
-            const path = new THREE.Mesh(pathwayGeo, pathwayMat);
-            path.rotation.x = -Math.PI / 2;
-            path.position.set(0, 0.005, 6.2);
-            path.receiveShadow = true;
-            scene.add(path);
-
-            // Gentle idle house sway, folded into Core's existing render loop via a hook
-            hookIntoRenderLoop(() => {
-                if (window.adoptMeHouseGroup) {
-                    window.adoptMeHouseGroup.rotation.y = Math.sin(Date.now() * 0.0001) * 0.04;
-                }
-            });
-        }
-
-        // --- Wrap Core's executeClientRenderTick so we can run per-frame map logic without touching Core.html ---
-        //
-        // IMPORTANT: Core's render loop re-schedules itself by calling
-        // `requestAnimationFrame(executeClientRenderTick)` as a bare identifier lookup, resolved
-        // against the global scope fresh on every call -- it is NOT a closed-over reference to the
-        // original function. That means simply reassigning window.executeClientRenderTick to a
-        // wrapped version is enough; Core's already-running loop will pick up the wrapped version
-        // on its very next frame on its own. Scheduling an extra requestAnimationFrame call here
-        // would start a second, parallel loop and double up every tick -- so we deliberately don't.
-        function hookIntoRenderLoop(fn) {
-            if (typeof window.executeClientRenderTick !== 'function') return;
-            if (window.__adoptMePatchedRenderTick) {
-                window.__adoptMeFrameHooks.push(fn);
-                return;
-            }
-            window.__adoptMeFrameHooks = [fn];
-            const originalTick = window.executeClientRenderTick;
-            window.__adoptMePatchedRenderTick = true;
-            window.executeClientRenderTick = function() {
-                originalTick.apply(this, arguments);
-                window.__adoptMeFrameHooks.forEach(hookFn => hookFn());
-            };
-        }
-
-        // --- Recolor Core's existing avatar meshes using this player's saved profile, instead of building a second rig ---
-        function applySavedAvatarToCorePlayer() {
-            const avatarColors = { skin: "#ffdbac", shirt: "#ff941a", pants: "#1e3799" };
-            let currentSessionUsername = "Guest";
-
-            try {
-                const activeSession = sessionStorage.getItem('mb_active_session');
-                const usersDB = JSON.parse(localStorage.getItem('mb_users_db')) || {};
-
-                if (activeSession && usersDB[activeSession.toLowerCase()]) {
-                    const profile = usersDB[activeSession.toLowerCase()];
-                    currentSessionUsername = profile.user || "Player";
-
-                    if (profile.avatar) {
-                        avatarColors.skin = profile.avatar.skin || avatarColors.skin;
-                        avatarColors.shirt = profile.avatar.shirt || avatarColors.shirt;
-                        avatarColors.pants = profile.avatar.pants || avatarColors.pants;
-                    }
-                }
-            } catch (err) {
-                console.log("Profile storage unavailable, using default avatar colors.", err);
-            }
-
-            window.adoptMeUsername = currentSessionUsername;
-
-            const player = window.localPlayerModel;
-            if (!player) return;
-
-            const skinMat = new window.THREE.MeshLambertMaterial({ color: avatarColors.skin });
-            const shirtMat = new window.THREE.MeshLambertMaterial({ color: avatarColors.shirt });
-            const pantsMat = new window.THREE.MeshLambertMaterial({ color: avatarColors.pants });
-
-            const head = player.getObjectByName('head');
-            const torso = player.getObjectByName('torso');
-            const leftArm = player.getObjectByName('leftArm');
-            const rightArm = player.getObjectByName('rightArm');
-            const leftLeg = player.getObjectByName('leftLeg');
-            const rightLeg = player.getObjectByName('rightLeg');
-
-            if (head) head.material = skinMat;
-            if (torso) torso.material = shirtMat;
-            if (leftArm) leftArm.material = skinMat;
-            if (rightArm) rightArm.material = skinMat;
-            if (leftLeg) leftLeg.material = pantsMat;
-            if (rightLeg) rightLeg.material = pantsMat;
-        }
-
-        // --- Move Core's default spawn point/camera to suit the Adopt Me house map ---
-        function positionPlayerAndCameraForMap() {
-            if (window.localPlayerModel) {
-                window.localPlayerModel.position.set(0, 0, 8);
-                window.localPlayerModel.rotation.set(0, Math.PI, 0);
-            }
-            if (window.camera) {
-                window.camera.position.set(0, 7, 16);
-                window.camera.lookAt(0, 2.8, 0);
-            }
-        }
-
-        function updateAdoptMeHud() {
-            const label = document.getElementById('hud-user-label');
-            if (label) {
-                label.textContent = `Active User: ${window.adoptMeUsername || "Guest"}`;
-            }
-        }
-
-        function fadeOutBootScreen() {
-            const bootScreen = document.getElementById('boot-loader-screen');
-            if (!bootScreen) return;
-            bootScreen.classList.add('fade-out');
-            setTimeout(() => bootScreen.remove(), 350);
-        }
-
-        /* ================================================================
-         *  SAVE SYSTEM
-         * ----------------------------------------------------------------
-         *  One JSON blob per username in localStorage, mirroring the same
-         *  storage pattern Core's profile/avatar system already uses
-         *  (mb_users_db / mb_active_session). Keyed by username so
-         *  different logged-in accounts on the same browser don't share
-         *  progress. Falls back to a "guest" slot if no session exists.
-         * ================================================================ */
-
-        const SAVE_KEY_PREFIX = 'mb_adoptme_save_';
-        let gameState = null; // populated by initSaveSystem(), single source of truth for this session
-
-        function defaultGameState() {
-            return {
-                bucks: 100,
-                pets: [],          // { id, species, stage, xp, hunger, energy, fun, isNeon, isMegaNeon }
-                activePetId: null,
-                eggInventory: [],  // { id, species, hatchesAt }
-                furniture: []      // { id, type, x, z }
-            };
-        }
-
-        function currentSaveKey() {
-            const username = window.adoptMeUsername || "Guest";
-            return SAVE_KEY_PREFIX + username.toLowerCase();
-        }
-
-        function initSaveSystem() {
-            try {
-                const raw = localStorage.getItem(currentSaveKey());
-                gameState = raw ? Object.assign(defaultGameState(), JSON.parse(raw)) : defaultGameState();
-            } catch (err) {
-                console.warn("AdoptMe: save data unreadable, starting fresh.", err);
-                gameState = defaultGameState();
-            }
-            // Expose on window so multiplayer integrations and developer tools can access state
-            window.gameState = gameState;
-        }
-
-        // Debounced so rapid-fire changes (e.g. needs ticking down every frame) don't write
-        // to localStorage constantly -- saves are batched into one write per ~600ms of activity.
-        let _saveDebounceHandle = null;
-        function saveGameState() {
-            clearTimeout(_saveDebounceHandle);
-            _saveDebounceHandle = setTimeout(() => {
-                try {
-                    localStorage.setItem(currentSaveKey(), JSON.stringify(gameState));
-                } catch (err) {
-                    console.warn("AdoptMe: failed to save game state.", err);
-                }
-            }, 600);
-        }
-
-        function addBucks(amount) {
-            gameState.bucks = Math.max(0, gameState.bucks + amount);
-            updateEconomyHud();
-            saveGameState();
-        }
-
-        function spendBucks(amount) {
-            if (gameState.bucks < amount) return false;
-            gameState.bucks -= amount;
-            updateEconomyHud();
-            saveGameState();
-            return true;
-        }
-
-        /* ================================================================
-         *  TOASTS
-         * ================================================================ */
-        function showToast(message) {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.add('toast-fade');
-                setTimeout(() => toast.remove(), 320);
-            }, 2600);
-        }
-
-        /* ================================================================
-         *  ECONOMY HUD
-         * ================================================================ */
-        function initEconomyHud() {
-            updateEconomyHud();
-        }
-
-        function updateEconomyHud() {
-            const label = document.getElementById('hud-bucks-label');
-            if (label) label.textContent = `💵 Bucks: ${gameState.bucks}`;
-        }
-
-        /* ================================================================
-         *  PET SPECIES + GROWTH CONFIG
-         * ================================================================ */
-        const PET_SPECIES = {
-            cat:     { name: "Cat",     emoji: "🐱", price: 50,  rarity: "Common",    bodyColor: 0xd4a373, accentColor: 0xf2e9dc },
-            dog:     { name: "Dog",     emoji: "🐶", price: 50,  rarity: "Common",    bodyColor: 0x8b5e3c, accentColor: 0xf2e9dc },
-            unicorn: { name: "Unicorn", emoji: "🦄", price: 600, rarity: "Legendary", bodyColor: 0xff6ec7, accentColor: 0xffffff }
-        };
-
-        // XP required to advance OUT of each stage; Full Grown is the final stage (no XP needed further,
-        // it just becomes eligible for Neon fusion once 4 of the same species are Full Grown).
-        const GROWTH_STAGES = ["Newborn", "Junior", "Teen", "Full Grown"];
-        const XP_TO_NEXT_STAGE = [30, 60, 100]; // index i = XP needed to leave stage i
-
-        const EGG_INCUBATION_MS = 20000; // 20s incubation, kept short for a browser game
-        const NEED_DECAY_PER_SEC = 0.6;  // each need drains this many points/sec (0-100 scale)
-        const INTERACT_COOLDOWN_MS = 4000; // prevents spam-clicking a pet for infinite Bucks/XP
-
-        function makePetId() { return 'pet_' + Date.now() + '_' + Math.floor(Math.random() * 10000); }
-        function makeEggId() { return 'egg_' + Date.now() + '_' + Math.floor(Math.random() * 10000); }
-
-        function createNewPet(species) {
-            return {
-                id: makePetId(),
-                species,
-                stage: 0,        // index into GROWTH_STAGES
-                xp: 0,
-                hunger: 100,
-                energy: 100,
-                fun: 100,
-                isNeon: false,
-                isMegaNeon: false,
-                lastInteractAt: 0
-            };
-        }
-
-        /* ================================================================
-         *  NURSERY (3D structure + egg shop)
-         * ================================================================ */
-        let nurseryGroup = null;
-        const NURSERY_POSITION = { x: -10, z: 4 };
-        const INTERACT_RADIUS = 2.6;
-
-        function buildNurseryStructure() {
-            const scene = window.scene;
-            const THREE = window.THREE;
-
-            nurseryGroup = new THREE.Group();
-
-            const baseGeo = new THREE.BoxGeometry(3.2, 2.4, 3.2);
-            const baseMat = new THREE.MeshStandardMaterial({ color: 0xffe0f0, roughness: 0.6 });
-            const base = new THREE.Mesh(baseGeo, baseMat);
-            base.position.y = 1.2;
-            base.castShadow = true;
-            base.receiveShadow = true;
-            nurseryGroup.add(base);
-
-            const roofGeo = new THREE.ConeGeometry(2.4, 1.6, 4);
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0xff8fc7, roughness: 0.5 });
-            const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.y = 3.2;
-            roof.rotation.y = Math.PI / 4;
-            roof.castShadow = true;
-            nurseryGroup.add(roof);
-
-            // Simple egg-shaped sign mesh sitting in front, just for visual identity
-            const signGeo = new THREE.SphereGeometry(0.4, 12, 12);
-            const signMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
-            const sign = new THREE.Mesh(signGeo, signMat);
-            sign.scale.set(0.8, 1.1, 0.8);
-            sign.position.set(0, 0.6, 1.9);
-            nurseryGroup.add(sign);
-
-            nurseryGroup.position.set(NURSERY_POSITION.x, 0, NURSERY_POSITION.z);
-            scene.add(nurseryGroup);
-        }
-
-        function initNursery() {
-            buildNurseryStructure();
-            renderNurseryEggList();
-        }
-
-        function renderNurseryEggList() {
-            const list = document.getElementById('nursery-egg-list');
-            if (!list) return;
-            list.innerHTML = '';
-
-            // Neon/Mega Neon fusion section (shown only when eligible)
-            const fusionRows = buildNeonFusionRows();
-            if (fusionRows.length > 0) {
-                const fusionHeader = document.createElement('div');
-                fusionHeader.style.cssText = 'font-size:12px; font-weight:bold; color:#66ffff; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;';
-                fusionHeader.textContent = '✨ Neon Fusion';
-                list.appendChild(fusionHeader);
-                fusionRows.forEach(row => list.appendChild(row));
-                const divider = document.createElement('div');
-                divider.style.cssText = 'border-top:1px solid #2e1803; margin:8px 0;';
-                list.appendChild(divider);
-            }
-
-            // Egg purchase section
-            const eggHeader = document.createElement('div');
-            eggHeader.style.cssText = 'font-size:12px; font-weight:bold; color:#ff941a; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;';
-            eggHeader.textContent = '🥚 Eggs';
-            list.appendChild(eggHeader);
-
-            Object.entries(PET_SPECIES).forEach(([speciesKey, info]) => {
-                const row = document.createElement('div');
-                row.className = 'shop-item-row';
-
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'shop-item-info';
-                infoDiv.innerHTML = `
-                    <span class="shop-item-name">${info.emoji} ${info.name} Egg <span style="color:#999; font-weight:normal;">(${info.rarity})</span></span>
-                    <span class="shop-item-price">💵 ${info.price} Bucks</span>
-                `;
-
-                const buyBtn = document.createElement('button');
-                buyBtn.className = 'shop-buy-btn';
-                buyBtn.textContent = 'Buy Egg';
-                buyBtn.onclick = () => buyEgg(speciesKey);
-
-                row.appendChild(infoDiv);
-                row.appendChild(buyBtn);
-                list.appendChild(row);
-            });
-
-            // Incubating eggs countdown
-            if (gameState.eggInventory.length > 0) {
-                const incDiv = document.createElement('div');
-                incDiv.style.cssText = 'margin-top:8px; font-size:12px; color:#ccc; border-top:1px solid #2e1803; padding-top:8px;';
-                gameState.eggInventory.forEach(egg => {
-                    const secsLeft = Math.max(0, Math.ceil((egg.hatchesAt - Date.now()) / 1000));
-                    const info = PET_SPECIES[egg.species];
-                    incDiv.innerHTML += `<div>🥚 ${info.emoji} ${info.name} Egg — hatches in ${secsLeft}s</div>`;
-                });
-                list.appendChild(incDiv);
-            }
-        }
-
-        function buildNeonFusionRows() {
-            const rows = [];
-            Object.entries(PET_SPECIES).forEach(([speciesKey, info]) => {
-                const fullGrown = gameState.pets.filter(p =>
-                    p.species === speciesKey && p.stage === GROWTH_STAGES.length - 1 && !p.isNeon && !p.isMegaNeon
-                );
-                const neons = gameState.pets.filter(p => p.species === speciesKey && p.isNeon && !p.isMegaNeon);
-
-                if (fullGrown.length >= 4) {
-                    rows.push(buildFusionRow(
-                        `✨ Neon ${info.name}`,
-                        `Fuse 4 Full Grown ${info.name}s`,
-                        () => fuseNeonPet(speciesKey, false)
-                    ));
-                }
-                if (neons.length >= 4) {
-                    rows.push(buildFusionRow(
-                        `✨ Mega Neon ${info.name}`,
-                        `Fuse 4 Neon ${info.name}s`,
-                        () => fuseNeonPet(speciesKey, true)
-                    ));
-                }
-            });
-            return rows;
-        }
-
-        function buildFusionRow(label, subtitle, onFuse) {
-            const row = document.createElement('div');
-            row.className = 'shop-item-row';
-            row.style.borderColor = '#66ffff44';
-
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'shop-item-info';
-            infoDiv.innerHTML = `
-                <span class="shop-item-name" style="color:#66ffff;">${label}</span>
-                <span class="shop-item-price" style="color:#aaa;">${subtitle}</span>
-            `;
-
-            const fuseBtn = document.createElement('button');
-            fuseBtn.className = 'shop-buy-btn';
-            fuseBtn.style.background = '#0099cc';
-            fuseBtn.textContent = 'Fuse!';
-            fuseBtn.onclick = onFuse;
-
-            row.appendChild(infoDiv);
-            row.appendChild(fuseBtn);
-            return row;
-        }
-
-        function fuseNeonPet(speciesKey, isMegaNeon) {
-            const info = PET_SPECIES[speciesKey];
-            const sourceList = isMegaNeon
-                ? gameState.pets.filter(p => p.species === speciesKey && p.isNeon && !p.isMegaNeon)
-                : gameState.pets.filter(p => p.species === speciesKey && p.stage === GROWTH_STAGES.length - 1 && !p.isNeon && !p.isMegaNeon);
-
-            if (sourceList.length < 4) {
-                showToast(`You need 4 ${isMegaNeon ? 'Neon' : 'Full Grown'} ${info.name}s to fuse!`);
-                return;
-            }
-
-            // Consume the 4 source pets
-            const consumed = sourceList.slice(0, 4).map(p => p.id);
-            gameState.pets = gameState.pets.filter(p => !consumed.includes(p.id));
-
-            // Create the fused pet
-            const fused = createNewPet(speciesKey);
-            fused.stage = GROWTH_STAGES.length - 1; // Full Grown
-            fused.isNeon = true;
-            if (isMegaNeon) fused.isMegaNeon = true;
-
-            // If the active pet was one of the consumed pets, clear it
-            if (consumed.includes(gameState.activePetId)) {
-                despawnActivePetMesh();
-                gameState.activePetId = null;
-            }
-
-            gameState.pets.push(fused);
-            gameState.activePetId = fused.id;
-            spawnActivePetMesh(fused);
-
-            saveGameState();
-            updatePetNeedsHud();
-            renderNurseryEggList();
-            closeAllPanels();
-            showToast(`✨ ${isMegaNeon ? 'Mega Neon' : 'Neon'} ${info.name} created!`);
-        }
-
-        function buyEgg(speciesKey) {
-            const info = PET_SPECIES[speciesKey];
-            if (!info) return;
-            if (!spendBucks(info.price)) {
-                showToast("Not enough Bucks!");
-                return;
-            }
-            gameState.eggInventory.push({
-                id: makeEggId(),
-                species: speciesKey,
-                hatchesAt: Date.now() + EGG_INCUBATION_MS
-            });
-            saveGameState();
-            showToast(`${info.emoji} ${info.name} Egg purchased! Incubating...`);
-            closeAllPanels();
-        }
-
-        /* ================================================================
-         *  PROXIMITY INTERACTION SYSTEM
-         * ----------------------------------------------------------------
-         *  Every frame, checks player distance to each registered
-         *  interactable zone (Nursery, house door, furniture shop, active
-         *  pet). Shows a "Press E" prompt when in range of the nearest
-         *  one, and routes the E keypress to that zone's handler.
-         * ================================================================ */
-        let interactionZones = []; // { id, getPosition: () => {x,z}, radius, label, onInteract }
-        let currentNearestZone = null;
-
-        function registerInteractionZone(zone) {
-            interactionZones = interactionZones.filter(z => z.id !== zone.id); // replace if re-registered
-            interactionZones.push(zone);
-        }
-
-        function unregisterInteractionZone(id) {
-            interactionZones = interactionZones.filter(z => z.id !== id);
-        }
-
-        function initInteractionPrompt() {
-            registerInteractionZone({
-                id: 'nursery',
-                getPosition: () => NURSERY_POSITION,
-                radius: INTERACT_RADIUS,
-                label: 'Open Nursery',
-                isActive: () => !isInsideHouse,
-                onInteract: () => openPanel('nursery-panel')
-            });
-
-            hookIntoRenderLoop(updateNearestInteractionZone);
-        }
-
-        function updateNearestInteractionZone() {
-            const player = window.localPlayerModel;
-            if (!player || interactionZones.length === 0) {
-                currentNearestZone = null;
-                setInteractPromptVisible(false);
-                return;
-            }
-
-            const px = player.position.x;
-            const pz = player.position.z;
-
-            let nearest = null;
-            let nearestDist = Infinity;
-            interactionZones.forEach(zone => {
-                if (typeof zone.isActive === 'function' && !zone.isActive()) return; // context-gated zones (e.g. only valid indoors)
-                const pos = zone.getPosition();
-                const d = Math.hypot(px - pos.x, pz - pos.z);
-                if (d <= zone.radius && d < nearestDist) {
-                    nearest = zone;
-                    nearestDist = d;
-                }
-            });
-
-            currentNearestZone = nearest;
-            if (nearest) {
-                setInteractPromptVisible(true, nearest.label);
-            } else {
-                setInteractPromptVisible(false);
-            }
-        }
-
-        function setInteractPromptVisible(visible, label) {
-            const promptEl = document.getElementById('interact-prompt');
-            if (!promptEl) return;
-            promptEl.classList.toggle('hidden', !visible);
-            if (visible && label) {
-                promptEl.innerHTML = `Press <kbd>E</kbd> to ${label}`;
-            }
-        }
-
-        function initInteractKeyHook() {
-            window.addEventListener('keydown', (e) => {
-                if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-                if (e.key.toLowerCase() === 'e') {
-                    if (currentNearestZone) {
-                        currentNearestZone.onInteract();
-                    }
-                } else if (e.key === 'Escape') {
-                    closeAllPanels();
-                }
-            });
-        }
-
-        function openPanel(panelId) {
-            closeAllPanels();
-            const panel = document.getElementById(panelId);
-            if (panel) panel.classList.remove('hidden');
-        }
-
-        function closeAllPanels() {
-            document.querySelectorAll('.game-panel').forEach(p => p.classList.add('hidden'));
-        }
-
-        /* ================================================================
-         *  PET MESH + LIVE PET INSTANCES
-         * ----------------------------------------------------------------
-         *  activePets: Map<petId, { meshGroup, followTarget }>  -- only
-         *  pets currently spawned in the world (we only spawn the single
-         *  active pet to keep things simple and performant; owned-but-not-
-         *  active pets stay in gameState.pets without a mesh).
-         * ================================================================ */
-        const activePetMeshes = new Map();
-
-        function buildPetMesh(species) {
-            const THREE = window.THREE;
-            const info = PET_SPECIES[species] || PET_SPECIES.cat;
-
-            const group = new THREE.Group();
-            const bodyMat = new THREE.MeshLambertMaterial({ color: info.bodyColor });
-            const accentMat = new THREE.MeshLambertMaterial({ color: info.accentColor });
-
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.7), bodyMat);
-            body.position.y = 0.3;
-            body.name = 'body';
-            group.add(body);
-
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.32, 0.32), bodyMat);
-            head.position.set(0, 0.45, 0.45);
-            head.name = 'head';
-            group.add(head);
-
-            // Small ear/horn accent so species are visually distinguishable at a glance
-            const accentGeo = species === 'unicorn'
-                ? new THREE.ConeGeometry(0.06, 0.25, 6)
-                : new THREE.ConeGeometry(0.08, 0.14, 4);
-            const earL = new THREE.Mesh(accentGeo, accentMat);
-            earL.position.set(species === 'unicorn' ? 0 : -0.12, 0.68, species === 'unicorn' ? 0.5 : 0.45);
-            group.add(earL);
-            if (species !== 'unicorn') {
-                const earR = earL.clone();
-                earR.position.x = 0.12;
-                group.add(earR);
-            }
-
-            const legGeo = new THREE.BoxGeometry(0.1, 0.22, 0.1);
-            [[-0.18, 0.25], [0.18, 0.25], [-0.18, -0.25], [0.18, -0.25]].forEach(([lx, lz]) => {
-                const leg = new THREE.Mesh(legGeo, bodyMat);
-                leg.position.set(lx, 0.11, lz);
-                group.add(leg);
-            });
-
-            group.castShadow = true;
-            group.traverse(node => { if (node.isMesh) node.castShadow = true; });
-
-            return group;
-        }
-
-        function spawnActivePetMesh(pet) {
-            despawnActivePetMesh(); // only one pet follows at a time in v1
-            const scene = window.scene;
-            const player = window.localPlayerModel;
-            if (!scene || !player) return;
-
-            const mesh = buildPetMesh(pet.species);
-            const scale = 0.6 + (pet.stage / (GROWTH_STAGES.length - 1)) * 0.6; // grows visually with stage
-            mesh.scale.set(scale, scale, scale);
-            mesh.position.set(player.position.x - 1, 0, player.position.z + 1);
-
-            if (pet.isNeon || pet.isMegaNeon) {
-                applyNeonGlow(mesh, pet.isMegaNeon);
-            }
-
-            scene.add(mesh);
-            activePetMeshes.set(pet.id, { meshGroup: mesh });
-        }
-
-        function despawnActivePetMesh() {
-            activePetMeshes.forEach((entry, id) => {
-                if (window.scene) window.scene.remove(entry.meshGroup);
-            });
-            activePetMeshes.clear();
-        }
-
-        function applyNeonGlow(meshGroup, isMega) {
-            const THREE = window.THREE;
-            const glowColor = isMega ? 0xffffff : 0x66ffff;
-            meshGroup.traverse(node => {
-                if (node.isMesh) {
-                    node.material = node.material.clone();
-                    node.material.emissive = new THREE.Color(glowColor);
-                    node.material.emissiveIntensity = isMega ? 0.9 : 0.6;
-                }
-            });
-        }
-
-        function getActivePet() {
-            if (!gameState.activePetId) return null;
-            return gameState.pets.find(p => p.id === gameState.activePetId) || null;
-        }
-
-        /* ================================================================
-         *  EGG HATCHING + PET NEEDS LOOP (runs once per second, not per-frame,
-         *  since needs decay slowly -- no need for 60fps precision here)
-         * ================================================================ */
-        function initPetNeedsLoop() {
-            // Re-spawn the active pet's mesh on load if one was already chosen in a previous session
-            const active = getActivePet();
-            if (active) spawnActivePetMesh(active);
-
-            setInterval(tickEggsAndNeeds, 1000);
-            hookIntoRenderLoop(updatePetFollowPositions);
-
-            updatePetNeedsHud();
-        }
-
-        function tickEggsAndNeeds() {
-            let stateChanged = false;
-
-            // --- Hatch any eggs whose timer is up ---
-            const now = Date.now();
-            const stillIncubating = [];
-            gameState.eggInventory.forEach(egg => {
-                if (now >= egg.hatchesAt) {
-                    const newPet = createNewPet(egg.species);
-                    gameState.pets.push(newPet);
-                    if (!gameState.activePetId) {
-                        gameState.activePetId = newPet.id;
-                        spawnActivePetMesh(newPet);
-                    }
-                    const info = PET_SPECIES[egg.species];
-                    showToast(`${info.emoji} Your ${info.name} egg hatched!`);
-                    stateChanged = true;
-                } else {
-                    stillIncubating.push(egg);
-                }
-            });
-            gameState.eggInventory = stillIncubating;
-
-            // --- Decay needs for the active pet only (matches "only active pet is in the world" model) ---
-            const active = getActivePet();
-            if (active) {
-                active.hunger = Math.max(0, active.hunger - NEED_DECAY_PER_SEC);
-                active.energy = Math.max(0, active.energy - NEED_DECAY_PER_SEC);
-                active.fun = Math.max(0, active.fun - NEED_DECAY_PER_SEC);
-                stateChanged = true;
-                updatePetNeedsHud();
-            }
-
-            if (stateChanged) saveGameState();
-        }
-
-        function updatePetFollowPositions() {
-            const active = getActivePet();
-            if (!active) return;
-            const entry = activePetMeshes.get(active.id);
-            const player = window.localPlayerModel;
-            if (!entry || !player) return;
-
-            // Simple lazy-follow: pet eases toward a point slightly behind/beside the player
-            const targetX = player.position.x - Math.sin(player.rotation.y) * 1.4;
-            const targetZ = player.position.z - Math.cos(player.rotation.y) * 1.4;
-
-            entry.meshGroup.position.x += (targetX - entry.meshGroup.position.x) * 0.06;
-            entry.meshGroup.position.z += (targetZ - entry.meshGroup.position.z) * 0.06;
-
-            const dx = targetX - entry.meshGroup.position.x;
-            const dz = targetZ - entry.meshGroup.position.z;
-            if (Math.hypot(dx, dz) > 0.05) {
-                entry.meshGroup.rotation.y = Math.atan2(dx, dz);
-            }
-
-            // Gentle idle bob
-            entry.meshGroup.position.y = Math.abs(Math.sin(Date.now() * 0.004)) * 0.05;
-        }
-
-        function updatePetNeedsHud() {
-            const hud = document.getElementById('pet-needs-hud');
-            const active = getActivePet();
-            if (!hud) return;
-
-            if (!active) {
-                hud.classList.add('hidden');
-                refreshPetInteractionZone();
-                return;
-            }
-            hud.classList.remove('hidden');
-
-            const info = PET_SPECIES[active.species];
-            document.getElementById('pet-needs-name').textContent =
-                `${info.emoji} ${info.name} • ${GROWTH_STAGES[active.stage]}${active.isMegaNeon ? ' ✨Mega Neon' : active.isNeon ? ' ✨Neon' : ''}`;
-            document.getElementById('need-fill-hunger').style.width = active.hunger + '%';
-            document.getElementById('need-fill-energy').style.width = active.energy + '%';
-            document.getElementById('need-fill-fun').style.width = active.fun + '%';
-
-            refreshPetInteractionZone();
-        }
-
-        // Keeps the "care for pet" interaction zone following the pet's live mesh position
-        function refreshPetInteractionZone() {
-            const active = getActivePet();
-            if (!active) {
-                unregisterInteractionZone('active-pet');
-                return;
-            }
-            registerInteractionZone({
-                id: 'active-pet',
-                getPosition: () => {
-                    const entry = activePetMeshes.get(active.id);
-                    return entry ? { x: entry.meshGroup.position.x, z: entry.meshGroup.position.z } : { x: 9999, z: 9999 };
-                },
-                radius: 1.8,
-                label: 'Care for Pet',
-                onInteract: () => interactWithActivePet()
-            });
-        }
-
-        function interactWithActivePet() {
-            const active = getActivePet();
-            if (!active) return;
-
-            const now = Date.now();
-            if (now - active.lastInteractAt < INTERACT_COOLDOWN_MS) {
-                showToast("Your pet needs a moment to rest from that!");
-                return;
-            }
-            active.lastInteractAt = now;
-
-            active.hunger = Math.min(100, active.hunger + 30);
-            active.energy = Math.min(100, active.energy + 30);
-            active.fun = Math.min(100, active.fun + 30);
-
-            const bucksEarned = 5;
-            addBucks(bucksEarned);
-            grantPetXp(active, 10);
-
-            showToast(`+${bucksEarned} Bucks! Pet cared for. 🧡`);
-            updatePetNeedsHud();
-            saveGameState();
-        }
-
-        /* ================================================================
-         *  GROWTH + NEON FUSION
-         * ================================================================ */
-        function grantPetXp(pet, amount) {
-            if (pet.stage >= GROWTH_STAGES.length - 1) return; // already Full Grown
-            pet.xp += amount;
-            const needed = XP_TO_NEXT_STAGE[pet.stage];
-            if (pet.xp >= needed) {
-                pet.xp -= needed;
-                pet.stage += 1;
-                const info = PET_SPECIES[pet.species];
-                showToast(`${info.emoji} ${info.name} grew to ${GROWTH_STAGES[pet.stage]}!`);
-
-                // Re-spawn mesh at new scale if this is the active pet
-                if (pet.id === gameState.activePetId) {
-                    spawnActivePetMesh(pet);
-                }
-
-                if (pet.stage === GROWTH_STAGES.length - 1) {
-                    checkNeonFusionAvailable(pet.species);
-                }
-            }
-        }
-
-        // Checks if the player now has 4+ Full Grown pets of one species and offers to fuse them into Neon.
-        // (Kept automatic-prompt rather than a full UI flow for v1 -- a toast invites the player to the
-        // Nursery where a fuse option appears once eligible.)
-        function checkNeonFusionAvailable(species) {
-            const fullGrown = gameState.pets.filter(p =>
-                p.species === species && p.stage === GROWTH_STAGES.length - 1 && !p.isNeon && !p.isMegaNeon
+        // Chimney
+        const chimney = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 2, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.8 })
+        );
+        chimney.position.set(2.5, 7.5, 0);
+        chimney.castShadow = true;
+        h.add(chimney);
+
+        h.position.set(0, 0, -3);
+        scene.add(h);
+    }
+
+    function buildNursery() {
+        const n = new THREE.Group();
+
+        const base = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 3, 4),
+            new THREE.MeshStandardMaterial({ color: 0xfce7f3, roughness: 0.6 })
+        );
+        base.position.y = 1.5;
+        base.castShadow = base.receiveShadow = true;
+        n.add(base);
+
+        const roof = new THREE.Mesh(
+            new THREE.ConeGeometry(3.2, 2, 4),
+            new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.5 })
+        );
+        roof.position.y = 4;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        n.add(roof);
+
+        // Egg sign
+        const egg = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 12, 12),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+        );
+        egg.scale.set(0.8, 1.15, 0.8);
+        egg.position.set(0, 0.55, 2.1);
+        n.add(egg);
+
+        n.position.set(-11, 0, 3);
+        nurseryMesh = n;
+        scene.add(n);
+    }
+
+    function buildTrees() {
+        const positions = [[-6,0,-9],[6,0,-9],[-14,0,6],[14,0,6],[-8,0,12],[9,0,14],[0,0,-15],[-4,0,16],[5,0,-18]];
+        positions.forEach(([x,y,z]) => {
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.3, 1.6, 8),
+                new THREE.MeshStandardMaterial({ color: 0x795548, roughness: 0.9 })
             );
-            if (fullGrown.length >= 4) {
-                const info = PET_SPECIES[species];
-                showToast(`✨ You have 4 Full Grown ${info.name}s! Visit the Nursery to fuse a Neon ${info.name}.`);
-            }
+            trunk.position.set(x, 0.8, z);
+            trunk.castShadow = true;
+            scene.add(trunk);
 
-            const neons = gameState.pets.filter(p => p.species === species && p.isNeon && !p.isMegaNeon);
-            if (neons.length >= 4) {
-                const info = PET_SPECIES[species];
-                showToast(`✨ You have 4 Neon ${info.name}s! Visit the Nursery to fuse a Mega Neon ${info.name}.`);
-            }
-        }
+            const leaves = new THREE.Mesh(
+                new THREE.SphereGeometry(1.3, 10, 10),
+                new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.85 })
+            );
+            leaves.position.set(x, 3, z);
+            leaves.castShadow = true;
+            scene.add(leaves);
+        });
+    }
 
-        /* ================================================================
-         *  HOUSE INTERIOR / EXTERIOR TOGGLE
-         * ----------------------------------------------------------------
-         *  Rather than a full separate scene swap (which would need to
-         *  rebuild lighting/ground/etc. and re-handle the player rig), we
-         *  keep ONE scene and toggle visibility: the outdoor house shell +
-         *  yard hide, an indoor room (walls/floor sized to match the house
-         *  footprint) shows, and the player teleports just inside the door.
-         *  Walking back through the door zone from inside reverses it.
-         * ================================================================ */
-        let interiorGroup = null;
-        let isInsideHouse = false;
-        const DOOR_OUTSIDE_POS = { x: 0, z: 5.2 };
-        const DOOR_INSIDE_POS = { x: 0, z: 2.5 };
+    // ─────────────────────────────────────────────
+    //  PLAYER
+    // ─────────────────────────────────────────────
+    let headM, torsoM, lArmM, rArmM, lLegM, rLegM;
 
-        function buildHouseInterior() {
-            const THREE = window.THREE;
-            interiorGroup = new THREE.Group();
-            interiorGroup.visible = false;
+    function buildPlayer() {
+        playerGroup = new THREE.Group();
 
-            const floorGeo = new THREE.PlaneGeometry(7.6, 6.2);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0xd7ccc8, roughness: 0.8 });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.set(0, 0.01, -0.5);
-            floor.receiveShadow = true;
-            interiorGroup.add(floor);
+        const skin  = new THREE.MeshStandardMaterial({ color: avatarColors.skin,  roughness: 0.7 });
+        const shirt = new THREE.MeshStandardMaterial({ color: avatarColors.shirt, roughness: 0.7 });
+        const pants = new THREE.MeshStandardMaterial({ color: avatarColors.pants, roughness: 0.7 });
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xfff3e0, roughness: 0.7 });
-            const backWall = new THREE.Mesh(new THREE.BoxGeometry(7.6, 4, 0.2), wallMat);
-            backWall.position.set(0, 2, -3.5);
-            interiorGroup.add(backWall);
+        // Head
+        headM = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), skin);
+        headM.position.y = 0.45;
+        headM.castShadow = true;
 
-            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 6.2), wallMat);
-            leftWall.position.set(-3.8, 2, -0.5);
-            interiorGroup.add(leftWall);
+        // Torso
+        torsoM = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.2, 0.65), shirt);
+        torsoM.position.y = -0.35;
+        torsoM.castShadow = true;
 
-            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 6.2), wallMat);
-            rightWall.position.set(3.8, 2, -0.5);
-            interiorGroup.add(rightWall);
+        // Arms — pivot at shoulder
+        const armGeo = new THREE.BoxGeometry(0.4, 1.1, 0.45);
+        lArmM = new THREE.Mesh(armGeo, skin);
+        lArmM.position.set(-0.77, -0.35, 0);
+        lArmM.castShadow = true;
 
-            // A simple shop counter inside marking the furniture shop interaction point
-            const counterGeo = new THREE.BoxGeometry(1.4, 0.9, 0.6);
-            const counterMat = new THREE.MeshStandardMaterial({ color: 0xa1887f, roughness: 0.6 });
-            const counter = new THREE.Mesh(counterGeo, counterMat);
-            counter.position.set(-2.6, 0.45, -2.8);
-            counter.castShadow = true;
-            interiorGroup.add(counter);
+        rArmM = new THREE.Mesh(armGeo, skin);
+        rArmM.position.set(0.77, -0.35, 0);
+        rArmM.castShadow = true;
 
-            window.scene.add(interiorGroup);
-        }
+        // Legs
+        const legGeo = new THREE.BoxGeometry(0.45, 1.1, 0.5);
+        lLegM = new THREE.Mesh(legGeo, pants);
+        lLegM.position.set(-0.28, -1.5, 0);
+        lLegM.castShadow = true;
 
-        function setHouseInteriorVisible(visible) {
-            isInsideHouse = visible;
-            window.isInsideHouse = visible; // keep window in sync for external access
-            if (interiorGroup) interiorGroup.visible = visible;
-            window.interiorGroup = interiorGroup; // expose for external access
-            if (window.adoptMeHouseGroup) window.adoptMeHouseGroup.visible = !visible;
+        rLegM = new THREE.Mesh(legGeo, pants);
+        rLegM.position.set(0.28, -1.5, 0);
+        rLegM.castShadow = true;
 
-            // Hide/show the outdoor ground+nursery so the interior reads as a clean separate room
-            if (window.adoptMeGroundMesh) window.adoptMeGroundMesh.visible = !visible;
-            if (nurseryGroup) nurseryGroup.visible = !visible;
+        [headM, torsoM, lArmM, rArmM, lLegM, rLegM].forEach(m => playerGroup.add(m));
 
-            const player = window.localPlayerModel;
-            if (player) {
-                const target = visible ? DOOR_INSIDE_POS : DOOR_OUTSIDE_POS;
-                player.position.set(target.x, 0, target.z);
-            }
-        }
+        // Place at ground level: lowest point of rig is bottom of legs
+        // lLegM.position.y = -1.5, leg height = 1.1, so bottom = -1.5 - 0.55 = -2.05
+        // We need that to be y=0, so group.position.y = 2.05
+        playerGroup.position.set(0, 2.05, 9);
+        scene.add(playerGroup);
+    }
 
-        function initHouseDoorZone() {
-            buildHouseInterior();
-            registerHouseDoorZone();
-        }
+    // ─────────────────────────────────────────────
+    //  PET MESH
+    // ─────────────────────────────────────────────
+    function buildPetMesh(pet) {
+        const sp   = SPECIES[pet.species];
+        const body = new THREE.MeshStandardMaterial({ color: sp.body, roughness: 0.7, emissive: pet.isNeon ? 0x66ffee : 0, emissiveIntensity: 0.4 });
+        const acc  = new THREE.MeshStandardMaterial({ color: sp.accent, roughness: 0.5 });
+        const g    = new THREE.Group();
 
-        function registerHouseDoorZone() {
-            registerInteractionZone({
-                id: 'house-door',
-                getPosition: () => isInsideHouse ? DOOR_INSIDE_POS : DOOR_OUTSIDE_POS,
-                radius: 1.6,
-                get label() { return isInsideHouse ? 'Exit House' : 'Enter House'; },
-                onInteract: () => {
-                    setHouseInteriorVisible(!isInsideHouse);
-                }
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.75), body);
+        torso.position.y = 0.38;
+        torso.castShadow = true;
+        g.add(torso);
+
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 0.4), body);
+        head.position.set(0, 0.54, 0.48);
+        head.castShadow = true;
+        g.add(head);
+
+        if (pet.species === 'unicorn') {
+            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.28, 6), acc);
+            horn.position.set(0, 0.8, 0.52);
+            g.add(horn);
+        } else {
+            [[-0.14, 0], [0.14, 0]].forEach(([ex, _]) => {
+                const ear = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.14, 4), body);
+                ear.position.set(ex, 0.74, 0.46);
+                g.add(ear);
             });
         }
 
-        /* ================================================================
-         *  FURNITURE SHOP
-         * ----------------------------------------------------------------
-         *  A shop counter inside the house. Each furniture type has a
-         *  fixed price and a fixed placement slot inside the interior
-         *  (kept simple for v1 -- no drag-and-drop placement yet).
-         * ================================================================ */
-        const FURNITURE_CATALOG = {
-            rug:     { name: "Cozy Rug",     emoji: "🟫", price: 30,  slot: { x: 0, z: -1.2 } },
-            lamp:    { name: "Floor Lamp",   emoji: "💡", price: 45,  slot: { x: 2.6, z: -2.6 } },
-            bookshelf: { name: "Bookshelf",  emoji: "📚", price: 80,  slot: { x: -2.8, z: -1.2 } }
-        };
-        const SHOP_COUNTER_POS = { x: -2.6, z: -2.8 };
+        const legGeo = new THREE.BoxGeometry(0.12, 0.26, 0.12);
+        [[-0.19, 0.12, 0.26], [0.19, 0.12, 0.26], [-0.19, 0.12, -0.26], [0.19, 0.12, -0.26]].forEach(([lx,ly,lz]) => {
+            const leg = new THREE.Mesh(legGeo, body);
+            leg.position.set(lx, ly, lz);
+            g.add(leg);
+        });
 
-        function initFurnitureShop() {
-            registerInteractionZone({
-                id: 'furniture-shop',
-                getPosition: () => SHOP_COUNTER_POS,
-                radius: 1.8,
-                label: 'Browse Furniture',
-                isActive: () => isInsideHouse,
-                onInteract: () => openPanel('furniture-panel')
-            });
-            renderFurnitureShopList();
+        const stageScale = 0.55 + (pet.stage / (STAGES.length - 1)) * 0.7;
+        g.scale.setScalar(stageScale);
+        return g;
+    }
+
+    function spawnPetMesh(pet) {
+        if (!pet) return;
+        clearPetMesh();
+        petGroup = buildPetMesh(pet);
+        petGroup.position.copy(playerGroup.position);
+        petGroup.position.x -= 1.2;
+        scene.add(petGroup);
+        petMeshMap.set(pet.id, petGroup);
+    }
+
+    function clearPetMesh() {
+        if (petGroup) { scene.remove(petGroup); petGroup = null; }
+        petMeshMap.clear();
+    }
+
+    // ─────────────────────────────────────────────
+    //  INTERACTION ZONES
+    // ─────────────────────────────────────────────
+    const NURSERY_POS = new THREE.Vector3(-11, 0, 3);
+    const PET_INTERACT_DIST = 2.2;
+    const NURSERY_DIST      = 3.5;
+
+    let currentZone = null;
+
+    function checkZones() {
+        const pp = playerGroup.position;
+        const ep = document.getElementById('e-prompt');
+        const ea = document.getElementById('e-action');
+
+        const nearNursery = pp.distanceTo(NURSERY_POS) < NURSERY_DIST;
+        const active      = getActive();
+        const nearPet     = active && petGroup && pp.distanceTo(petGroup.position) < PET_INTERACT_DIST;
+
+        if (nearNursery) {
+            currentZone = 'nursery';
+            ea.textContent = 'open Nursery';
+            ep.style.display = 'block';
+        } else if (nearPet) {
+            currentZone = 'pet';
+            ea.textContent = 'care for ' + SPECIES[active.species].name;
+            ep.style.display = 'block';
+        } else {
+            currentZone = null;
+            ep.style.display = 'none';
+        }
+    }
+
+    function handleE() {
+        if (!currentZone) return;
+        if (currentZone === 'nursery') openNursery();
+        if (currentZone === 'pet')     openCare();
+    }
+
+    // ─────────────────────────────────────────────
+    //  NURSERY
+    // ─────────────────────────────────────────────
+    function openNursery() {
+        document.getElementById('nursery-panel').classList.remove('hidden');
+        renderNurseryPanel();
+    }
+
+    function renderNurseryPanel() {
+        const body = document.getElementById('nursery-body');
+        body.innerHTML = '';
+
+        // Fuse section if eligible
+        const fusionRows = buildFusionRows();
+        if (fusionRows.length > 0) {
+            const lbl = document.createElement('div');
+            lbl.className = 'section-label';
+            lbl.textContent = '✨ Neon Fusion';
+            body.appendChild(lbl);
+            fusionRows.forEach(r => body.appendChild(r));
+            const hr = document.createElement('hr');
+            hr.className = 'divider';
+            body.appendChild(hr);
         }
 
-        function renderFurnitureShopList() {
-            const list = document.getElementById('furniture-item-list');
-            if (!list) return;
-            list.innerHTML = '';
+        const lbl2 = document.createElement('div');
+        lbl2.className = 'section-label';
+        lbl2.textContent = '🥚 Buy Egg';
+        body.appendChild(lbl2);
 
-            Object.entries(FURNITURE_CATALOG).forEach(([typeKey, info]) => {
-                const owned = gameState.furniture.some(f => f.type === typeKey);
+        Object.entries(SPECIES).forEach(([key, sp]) => {
+            const row = document.createElement('div');
+            row.className = 'shop-row';
+            row.innerHTML = `
+                <div class="shop-info">
+                    <div class="shop-name">${sp.emoji} ${sp.name} Egg</div>
+                    <div class="shop-sub">${sp.rarity}</div>
+                    <div class="shop-price">💚 ${sp.price} Bucks</div>
+                </div>`;
+            const btn = document.createElement('button');
+            btn.className = 'buy-btn';
+            btn.textContent = 'Buy';
+            btn.onclick = () => buyEgg(key);
+            row.appendChild(btn);
+            body.appendChild(row);
+        });
 
+        if (gs.eggs.length > 0) {
+            const hr2 = document.createElement('hr');
+            hr2.className = 'divider';
+            body.appendChild(hr2);
+            const lbl3 = document.createElement('div');
+            lbl3.className = 'section-label';
+            lbl3.textContent = '⏳ Incubating';
+            body.appendChild(lbl3);
+            gs.eggs.forEach(egg => {
+                const rem = Math.max(0, Math.ceil((egg.hatchesAt - Date.now()) / 1000));
+                const sp  = SPECIES[egg.species];
                 const row = document.createElement('div');
-                row.className = 'shop-item-row';
-
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'shop-item-info';
-                infoDiv.innerHTML = `
-                    <span class="shop-item-name">${info.emoji} ${info.name}</span>
-                    <span class="shop-item-price">${owned ? 'Owned' : `💵 ${info.price} Bucks`}</span>
-                `;
-
-                const buyBtn = document.createElement('button');
-                buyBtn.className = 'shop-buy-btn';
-                buyBtn.textContent = owned ? 'Owned' : 'Buy';
-                buyBtn.disabled = owned;
-                buyBtn.onclick = () => buyFurniture(typeKey);
-
-                row.appendChild(infoDiv);
-                row.appendChild(buyBtn);
-                list.appendChild(row);
+                row.className = 'shop-row';
+                row.innerHTML = `<div class="shop-info"><div class="shop-name">${sp.emoji} ${sp.name} Egg</div><div class="shop-sub">Hatches in ${rem}s</div></div>`;
+                body.appendChild(row);
             });
         }
+    }
 
-        function buyFurniture(typeKey) {
-            const info = FURNITURE_CATALOG[typeKey];
-            if (!info) return;
-            if (gameState.furniture.some(f => f.type === typeKey)) return; // already owned, one of each in v1
-
-            if (!spendBucks(info.price)) {
-                showToast("Not enough Bucks!");
-                return;
+    function buildFusionRows() {
+        const rows = [];
+        Object.entries(SPECIES).forEach(([key, sp]) => {
+            const fg = gs.pets.filter(p => p.species === key && p.stage === STAGES.length - 1 && !p.isNeon && !p.isMegaNeon);
+            if (fg.length >= 4) {
+                const row = document.createElement('div');
+                row.className = 'shop-row';
+                row.innerHTML = `<div class="shop-info"><div class="shop-name" style="color:#a78bfa">✨ Neon ${sp.name}</div><div class="shop-sub">Fuse 4 Full Grown ${sp.name}s</div></div>`;
+                const btn = document.createElement('button');
+                btn.className = 'fuse-btn';
+                btn.textContent = 'Fuse!';
+                btn.onclick = () => fuseNeon(key, false);
+                row.appendChild(btn);
+                rows.push(row);
             }
+            const neons = gs.pets.filter(p => p.species === key && p.isNeon && !p.isMegaNeon);
+            if (neons.length >= 4) {
+                const row = document.createElement('div');
+                row.className = 'shop-row';
+                row.innerHTML = `<div class="shop-info"><div class="shop-name" style="color:#38bdf8">✨ Mega Neon ${sp.name}</div><div class="shop-sub">Fuse 4 Neon ${sp.name}s</div></div>`;
+                const btn = document.createElement('button');
+                btn.className = 'fuse-btn';
+                btn.textContent = 'Fuse!';
+                btn.onclick = () => fuseNeon(key, true);
+                row.appendChild(btn);
+                rows.push(row);
+            }
+        });
+        return rows;
+    }
 
-            gameState.furniture.push({ id: 'furn_' + Date.now(), type: typeKey, x: info.slot.x, z: info.slot.z });
-            saveGameState();
-            showToast(`${info.emoji} ${info.name} placed in your house!`);
-            renderFurnitureShopList();
-            renderOwnedFurniture();
-            closeAllPanels();
+    function buyEgg(species) {
+        const sp = SPECIES[species];
+        if (!spendBucks(sp.price)) return;
+        gs.eggs.push({ id: 'e' + Date.now(), species, hatchesAt: Date.now() + HATCH_MS });
+        save();
+        toast(`${sp.emoji} ${sp.name} Egg incubating — hatches in ${HATCH_MS/1000}s!`);
+        renderNurseryPanel();
+    }
+
+    function fuseNeon(species, mega) {
+        const sp  = SPECIES[species];
+        const src = mega
+            ? gs.pets.filter(p => p.species === species && p.isNeon && !p.isMegaNeon)
+            : gs.pets.filter(p => p.species === species && p.stage === STAGES.length - 1 && !p.isNeon && !p.isMegaNeon);
+        if (src.length < 4) return;
+        const ids = src.slice(0, 4).map(p => p.id);
+        gs.pets = gs.pets.filter(p => !ids.includes(p.id));
+        if (ids.includes(gs.activePet)) { gs.activePet = null; clearPetMesh(); }
+        const np = newPet(species);
+        np.stage = STAGES.length - 1;
+        np.isNeon = true;
+        if (mega) np.isMegaNeon = true;
+        gs.pets.push(np);
+        gs.activePet = np.id;
+        spawnPetMesh(np);
+        save();
+        toast(`✨ ${mega ? 'Mega Neon' : 'Neon'} ${sp.name} created!`);
+        closePanel();
+    }
+
+    // ─────────────────────────────────────────────
+    //  PET CARE PANEL
+    // ─────────────────────────────────────────────
+    function openCare() {
+        const pet = getActive();
+        if (!pet) return;
+        const sp = SPECIES[pet.species];
+        document.getElementById('care-title').textContent = `${sp.emoji} Care for ${pet.name || sp.name}`;
+        const body = document.getElementById('care-body');
+        body.innerHTML = '';
+
+        const cooldown = Date.now() - pet.lastCare < COOLDOWN;
+
+        const actions = [
+            { label: '🍖 Feed', key: 'hunger',  reward: 5  },
+            { label: '😴 Rest', key: 'energy',  reward: 4  },
+            { label: '🎾 Play', key: 'fun',     reward: 6  },
+        ];
+
+        actions.forEach(a => {
+            const row = document.createElement('div');
+            row.className = 'shop-row';
+            row.innerHTML = `<div class="shop-info"><div class="shop-name">${a.label}</div><div class="shop-price">+${a.reward} Bucks · +8 XP</div></div>`;
+            const btn = document.createElement('button');
+            btn.className = 'buy-btn';
+            btn.textContent = 'Do it';
+            btn.disabled = cooldown;
+            if (cooldown) btn.title = 'Pet needs a moment!';
+            btn.onclick = () => doCare(a.key, a.reward);
+            row.appendChild(btn);
+            body.appendChild(row);
+        });
+
+        const info = document.createElement('div');
+        info.style.cssText = 'font-size:11px; color:#6b7280; margin-top:4px;';
+        info.textContent = `Stage: ${STAGES[pet.stage]}  ·  XP: ${pet.xp}/${XP_PER_STAGE[pet.stage] || '—'}`;
+        body.appendChild(info);
+
+        document.getElementById('care-panel').classList.remove('hidden');
+    }
+
+    function doCare(need, reward) {
+        const pet = getActive();
+        if (!pet) return;
+        if (Date.now() - pet.lastCare < COOLDOWN) { toast("Pet needs a moment!"); return; }
+        pet.lastCare = Date.now();
+        pet[need] = Math.min(100, pet[need] + 35);
+        addBucks(reward);
+        grantXp(pet, 8);
+        save();
+        updateNeedsHud(pet);
+        closePanel();
+        toast(`+${reward} Bucks! ${SPECIES[pet.species].name} loved that 💜`);
+    }
+
+    function grantXp(pet, amt) {
+        if (pet.stage >= STAGES.length - 1) return;
+        pet.xp += amt;
+        if (pet.xp >= XP_PER_STAGE[pet.stage]) {
+            pet.xp -= XP_PER_STAGE[pet.stage];
+            pet.stage++;
+            const sp = SPECIES[pet.species];
+            toast(`${sp.emoji} ${sp.name} grew to ${STAGES[pet.stage]}!`);
+            if (petGroup) {
+                const s = 0.55 + (pet.stage / (STAGES.length - 1)) * 0.7;
+                petGroup.scale.setScalar(s);
+            }
+            if (pet.stage === STAGES.length - 1) {
+                const fg = gs.pets.filter(p => p.species === pet.species && p.stage === STAGES.length - 1 && !p.isNeon);
+                if (fg.length >= 4) toast(`✨ You can now fuse a Neon ${SPECIES[pet.species].name} at the Nursery!`);
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  NEEDS HUD
+    // ─────────────────────────────────────────────
+    function updateNeedsHud(pet) {
+        const panel = document.getElementById('needs-panel');
+        if (!pet) { panel.style.display = 'none'; return; }
+        panel.style.display = 'block';
+        const sp = SPECIES[pet.species];
+        document.getElementById('needs-name').textContent =
+            `${sp.emoji} ${sp.name} · ${STAGES[pet.stage]}${pet.isMegaNeon ? ' ✨MN' : pet.isNeon ? ' ✨N' : ''}`;
+        document.getElementById('fill-hunger').style.width = pet.hunger + '%';
+        document.getElementById('fill-energy').style.width = pet.energy + '%';
+        document.getElementById('fill-fun').style.width    = pet.fun    + '%';
+    }
+
+    // ─────────────────────────────────────────────
+    //  HATCH + NEEDS DECAY LOOP (1s interval)
+    // ─────────────────────────────────────────────
+    setInterval(() => {
+        if (!gs) return;
+
+        // Hatch eggs
+        const still = [];
+        gs.eggs.forEach(egg => {
+            if (Date.now() >= egg.hatchesAt) {
+                const np = newPet(egg.species);
+                gs.pets.push(np);
+                if (!gs.activePet) { gs.activePet = np.id; spawnPetMesh(np); }
+                toast(`${SPECIES[egg.species].emoji} Your egg hatched! Say hi to your new ${SPECIES[egg.species].name}!`);
+                renderNurseryPanel();
+            } else { still.push(egg); }
+        });
+        gs.eggs = still;
+
+        // Decay needs
+        const pet = getActive();
+        if (pet) {
+            pet.hunger = Math.max(0, pet.hunger - DECAY);
+            pet.energy = Math.max(0, pet.energy - DECAY * 0.8);
+            pet.fun    = Math.max(0, pet.fun    - DECAY * 0.6);
+            updateNeedsHud(pet);
         }
 
-        function buildFurnitureMesh(typeKey) {
-            const THREE = window.THREE;
-            const group = new THREE.Group();
+        save();
+    }, 1000);
 
-            if (typeKey === 'rug') {
-                const rug = new THREE.Mesh(
-                    new THREE.PlaneGeometry(2, 1.4),
-                    new THREE.MeshStandardMaterial({ color: 0xc06b4f, roughness: 0.9 })
-                );
-                rug.rotation.x = -Math.PI / 2;
-                rug.position.y = 0.015;
-                group.add(rug);
-            } else if (typeKey === 'lamp') {
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x444444 }));
-                pole.position.y = 0.7;
-                group.add(pole);
-                const shade = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xfff3b0, emissiveIntensity: 0.4 }));
-                shade.position.y = 1.45;
-                group.add(shade);
-            } else if (typeKey === 'bookshelf') {
-                const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.7 }));
-                shelf.position.y = 0.9;
-                shelf.castShadow = true;
-                group.add(shelf);
-            }
+    // ─────────────────────────────────────────────
+    //  PANEL CLOSE
+    // ─────────────────────────────────────────────
+    function closePanel() {
+        document.getElementById('nursery-panel').classList.add('hidden');
+        document.getElementById('care-panel').classList.add('hidden');
+    }
 
-            return group;
+    // Click outside panel box to close
+    document.querySelectorAll('.panel-overlay').forEach(el => {
+        el.addEventListener('click', e => { if (e.target === el) closePanel(); });
+    });
+
+    // ─────────────────────────────────────────────
+    //  INPUT
+    // ─────────────────────────────────────────────
+    window.addEventListener('keydown', e => {
+        const k = e.key.toLowerCase();
+        if (['w','a','s','d'].includes(k)) KEYS[k] = true;
+        if (k === 'e') { e.preventDefault(); handleE(); }
+        if (e.key === 'Escape') closePanel();
+    });
+    window.addEventListener('keyup', e => {
+        const k = e.key.toLowerCase();
+        if (['w','a','s','d'].includes(k)) KEYS[k] = false;
+    });
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ─────────────────────────────────────────────
+    //  GAME LOOP
+    // ─────────────────────────────────────────────
+    function loop() {
+        requestAnimationFrame(loop);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const t  = clock.getElapsedTime ? clock.getElapsedTime() : Date.now() * 0.001;
+        const elapsed = Date.now() * 0.001;
+
+        // Movement
+        let dx = 0, dz = 0;
+        if (KEYS.w) dz -= 1;
+        if (KEYS.s) dz += 1;
+        if (KEYS.a) dx -= 1;
+        if (KEYS.d) dx += 1;
+
+        const moving = dx !== 0 || dz !== 0;
+
+        if (moving) {
+            const len = Math.hypot(dx, dz);
+            dx /= len; dz /= len;
+            playerGroup.position.x += dx * SPEED * dt;
+            playerGroup.position.z += dz * SPEED * dt;
+            playerGroup.rotation.y = Math.atan2(dx, dz);
+
+            lLegM.rotation.x =  Math.sin(elapsed * 10) * 0.5;
+            rLegM.rotation.x = -Math.sin(elapsed * 10) * 0.5;
+            lArmM.rotation.x = -Math.sin(elapsed * 10) * 0.4;
+            rArmM.rotation.x =  Math.sin(elapsed * 10) * 0.4;
+        } else {
+            // Idle breathe
+            lLegM.rotation.x = 0;
+            rLegM.rotation.x = 0;
+            lArmM.rotation.x = Math.sin(elapsed * 1.8) * 0.04;
+            rArmM.rotation.x = -Math.sin(elapsed * 1.8) * 0.04;
+            playerGroup.position.y = 2.05 + Math.sin(elapsed * 1.8) * 0.02;
         }
 
-        function renderOwnedFurniture() {
-            // Clear any previously rendered furniture meshes before re-rendering, so this is safe to call repeatedly
-            if (window.adoptMeFurnitureGroup) {
-                window.scene.remove(window.adoptMeFurnitureGroup);
-            }
-            const THREE = window.THREE;
-            const group = new THREE.Group();
+        // Camera follow
+        const target = playerGroup.position.clone().add(CAM_OFFSET);
+        camera.position.lerp(target, 0.08);
+        camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.2, playerGroup.position.z);
 
-            gameState.furniture.forEach(item => {
-                const mesh = buildFurnitureMesh(item.type);
-                mesh.position.set(item.x, 0, item.z);
-                group.add(mesh);
-            });
-
-            window.scene.add(group);
-            window.adoptMeFurnitureGroup = group;
+        // Pet follow
+        if (petGroup) {
+            const behind = new THREE.Vector3(
+                playerGroup.position.x - Math.sin(playerGroup.rotation.y) * 1.6,
+                petGroup.position.y,
+                playerGroup.position.z - Math.cos(playerGroup.rotation.y) * 1.6
+            );
+            petGroup.position.lerp(behind, 0.06);
+            petGroup.position.y = Math.abs(Math.sin(elapsed * 3.5)) * 0.06;
         }
-    </script>
+
+        // Zone check
+        checkZones();
+
+        renderer.render(scene, camera);
+    }
+
+    // ─────────────────────────────────────────────
+    //  INIT
+    // ─────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+        loadProfile();
+        loadSave();
+        updateBucksHud();
+        initScene();
+        updateNeedsHud(getActive());
+        loop();
+    });
+</script>
 </body>
 </html>
