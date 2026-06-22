@@ -12,6 +12,7 @@
             background: #020100;
         }
 
+        /* Shown only until Core.html has been fetched + mounted */
         #boot-loader-screen {
             position: fixed;
             top: 0; left: 0;
@@ -51,6 +52,7 @@
             display: none;
         }
 
+        /* Adopt Me specific HUD, layered above the Core HUD */
         .game-hud {
             position: absolute;
             top: 15px;
@@ -77,10 +79,172 @@
             color: #ccc;
             margin-top: 3px;
         }
+        #hud-bucks-label {
+            font-size: 13px;
+            color: #7ed957;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* Interaction prompt */
+        .interact-prompt {
+            position: absolute;
+            bottom: 26%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(13, 6, 0, 0.9);
+            border: 2px solid #ff941a;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            z-index: 15;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .interact-prompt kbd {
+            background: #ff941a;
+            color: #1a0e02;
+            padding: 1px 7px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .hidden { display: none !important; }
+
+        /* Shop / Nursery panels */
+        .game-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 92%;
+            max-width: 420px;
+            max-height: 70vh;
+            background: rgba(13, 6, 0, 0.95);
+            border: 2px solid #ff941a;
+            border-radius: 12px;
+            z-index: 40;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid #2e1803;
+            font-weight: bold;
+            font-size: 16px;
+            color: #ff941a;
+        }
+        .panel-close-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .panel-close-btn:hover { background: rgba(255,255,255,0.1); }
+        .panel-body {
+            padding: 14px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .shop-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid #2e1803;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .shop-item-info { display: flex; flex-direction: column; gap: 2px; }
+        .shop-item-name { font-weight: bold; font-size: 14px; }
+        .shop-item-price { font-size: 12px; color: #7ed957; }
+        .shop-buy-btn {
+            background: #ff941a;
+            color: #1a0e02;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .shop-buy-btn:hover { background: #e07b0d; }
+        .shop-buy-btn:disabled { background: #555; color: #999; cursor: not-allowed; }
+
+        /* Active pet needs HUD */
+        .pet-needs-hud {
+            position: absolute;
+            top: 90px;
+            left: 15px;
+            width: 180px;
+            background: rgba(13, 6, 0, 0.85);
+            border: 2px solid #ff941a;
+            border-radius: 8px;
+            padding: 10px 14px;
+            z-index: 10;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        .pet-needs-title { font-weight: bold; font-size: 13px; margin-bottom: 8px; color: #ff941a; }
+        .need-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .need-row:last-child { margin-bottom: 0; }
+        .need-bar {
+            flex: 1;
+            height: 8px;
+            background: #2e1803;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .need-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff941a, #7ed957);
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+
+        /* Toasts */
+        #toast-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 50;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(13, 6, 0, 0.95);
+            border: 2px solid #ff941a;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            animation: toast-in 0.25s ease;
+        }
+        @keyframes toast-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .toast.toast-fade { opacity: 0; transition: opacity 0.3s ease; }
     </style>
 </head>
 <body>
 
+    <!-- Boot screen shown while Core.html is fetched and mounted -->
     <div id="boot-loader-screen">
         <div class="boot-spinner"></div>
         <div class="boot-label">Loading MeowEngine Core Module…</div>
@@ -89,14 +253,77 @@
         </div>
     </div>
 
+    <!-- Adopt Me's own HUD overlay -- sits on top of whatever Core.html renders -->
     <div class="game-hud">
-        <div class="game-title">Adopt Me!</div>
+        <div class="game-title">🏡 Adopt Me!</div>
         <div id="hud-user-label">Loading Profile Engine...</div>
+        <div id="hud-bucks-label">💵 Bucks: 0</div>
     </div>
 
+    <!-- Floating "Press E" interaction prompt, shown when near something interactable -->
+    <div id="interact-prompt" class="interact-prompt hidden">Press <kbd>E</kbd> to interact</div>
+
+    <!-- Nursery egg-buying panel -->
+    <div id="nursery-panel" class="game-panel hidden">
+        <div class="panel-header">
+            <span>🥚 Nursery</span>
+            <button class="panel-close-btn" onclick="closeAllPanels()">✕</button>
+        </div>
+        <div class="panel-body" id="nursery-egg-list"></div>
+    </div>
+
+    <!-- Furniture shop panel -->
+    <div id="furniture-panel" class="game-panel hidden">
+        <div class="panel-header">
+            <span>🛋️ Furniture Shop</span>
+            <button class="panel-close-btn" onclick="closeAllPanels()">✕</button>
+        </div>
+        <div class="panel-body" id="furniture-item-list"></div>
+    </div>
+
+    <!-- Active pet needs bar, shown when player has a pet out -->
+    <div id="pet-needs-hud" class="pet-needs-hud hidden">
+        <div class="pet-needs-title" id="pet-needs-name">Pet</div>
+        <div class="need-row"><span>🍖</span><div class="need-bar"><div class="need-fill" id="need-fill-hunger"></div></div></div>
+        <div class="need-row"><span>⚡</span><div class="need-bar"><div class="need-fill" id="need-fill-energy"></div></div></div>
+        <div class="need-row"><span>🎾</span><div class="need-bar"><div class="need-fill" id="need-fill-fun"></div></div></div>
+    </div>
+
+    <!-- Toast notifications (Bucks earned, pet hatched, etc.) -->
+    <div id="toast-container"></div>
+
     <script>
-       
-        const CORE_MODULE_PATH = "Core.html";
+        /*
+         * ============================================================
+         *  ADOPT ME — MAP MODULE
+         * ------------------------------------------------------------
+         *  This file no longer ships its own renderer, avatar rig,
+         *  HUD chat, or controls. All of that lives in Core.html,
+         *  MeowBlox's shared runtime client module.
+         *
+         *  Boot sequence:
+         *   1. Fetch Core.html (same-folder relative path).
+         *   2. Inject its <style> + <body> + <script> into this page,
+         *      so the shared HUD/canvas/chat/emote/esc-menu mount here.
+         *   3. Call Core's initGameEngineEnvironment() + setupInputHooks()
+         *      directly. (Core normally runs these from its own
+         *      DOMContentLoaded listener, but that event is one-shot per
+         *      document and has already fired by the time we inject Core's
+         *      script, so its listener would never run on its own.) This
+         *      builds the THREE.js scene/camera/renderer/localPlayerModel
+         *      and starts Core's render loop, synchronously.
+         *   4. With Core's globals now ready, this module hooks in:
+         *       - removes the KittyPlayer NPC + its mock greeting
+         *       - adds the Adopt Me house/ground/path to Core's scene
+         *       - recolors Core's player avatar from saved profile data
+         *       - repositions the camera/player for this map
+         *   5. Adopt Me's HUD (top-left, offset next to Core's logo)
+         *      shows the active username on top of Core's own HUD.
+         * ============================================================
+         */
+
+        const CORE_MODULE_PATH = "Core.html"; // same-folder relative path, set per deployment
+
         window.addEventListener('DOMContentLoaded', () => {
             loadCoreModule(CORE_MODULE_PATH);
         });
@@ -115,7 +342,24 @@
             }
         }
 
-       
+        // --- Make Core's top-level state variables reachable from AdoptMe's own <script> block ---
+        //
+        // Core.html declares its engine state with top-level `let` inside its inline <script> tag:
+        //   let scene, camera, renderer, clock;
+        //   let localPlayerModel, computerNetworkPlayer;
+        //
+        // When that script is injected into this page, browsers DO share one global scope across
+        // sibling <script> tags for `var` and `function` declarations (both attach to `window`),
+        // but `let`/`const` declared at the top level of one <script> block are scoped to that
+        // block only -- invisible even to other inline <script> tags in the same document. Since
+        // AdoptMe's map-building code lives in its own separate <script> tag, it can never read
+        // `scene`, `camera`, etc. as bare identifiers, and `window.scene` would stay undefined too.
+        //
+        // Fix: do a narrow, targeted text substitution -- converting just these two specific
+        // declaration lines from `let` to `var` -- before injecting Core's source. `var` at top
+        // level of a script DOES attach to `window`, making these reachable as window.scene,
+        // window.camera, etc. Everything else in Core.html is left completely untouched; this
+        // does not modify the Core.html file on disk, only the in-memory copy used for injection.
         function exposeCoreStateGlobals(html) {
             const targetedDeclarations = [
                 'let scene, camera, renderer, clock;',
@@ -144,10 +388,14 @@
                 document.head.appendChild(styleNode.cloneNode(true));
             });
 
+            // 2) Pull in Core's external script tags (e.g. three.js CDN) and load them in order,
+            //    waiting for each to finish before moving to the next.
             const externalScripts = Array.from(parsedDoc.querySelectorAll('script[src]'));
 
+            // 3) Pull in Core's body content (canvas mount point, HUD markup, chat, emote wheel, esc menu)
             const coreBodyFragment = document.createDocumentFragment();
             Array.from(parsedDoc.body.children).forEach(node => {
+                // Skip inline <script> here; we inject those last, after body is in the DOM
                 if (node.tagName === 'SCRIPT') return;
                 coreBodyFragment.appendChild(node.cloneNode(true));
             });
@@ -157,19 +405,28 @@
             coreMountPoint.appendChild(coreBodyFragment);
             document.body.appendChild(coreMountPoint);
 
+            // 4) Pull in Core's inline <script> blocks (the actual engine code)
             const inlineScripts = Array.from(parsedDoc.querySelectorAll('script:not([src])'))
                 .map(s => s.textContent);
 
             loadScriptsSequentially(externalScripts.map(s => s.getAttribute('src')))
                 .then(() => {
-          
+                    // Run Core's inline engine code now that THREE.js (and any other deps) are ready.
+                    // This defines initGameEngineEnvironment(), setupInputHooks(), and all the other
+                    // Core functions/globals as window-level identifiers (they're declared with
+                    // `function` at script top-level, so they attach to window).
                     inlineScripts.forEach(code => {
                         const scriptEl = document.createElement('script');
                         scriptEl.textContent = code;
                         document.body.appendChild(scriptEl);
                     });
 
-                   
+                    // IMPORTANT: Core.html registers its own `window.addEventListener('DOMContentLoaded', ...)`
+                    // to call initGameEngineEnvironment() + setupInputHooks(). DOMContentLoaded is a
+                    // one-shot event for this document and has ALREADY fired by the time we reach this
+                    // point (we're running from AdoptMe's own DOMContentLoaded handler) -- so Core's
+                    // listener registered just above will never be invoked by the browser. We call its
+                    // init functions directly instead.
                     if (typeof window.initGameEngineEnvironment === 'function') {
                         window.initGameEngineEnvironment();
                     } else {
@@ -179,7 +436,9 @@
                         window.setupInputHooks();
                     }
 
-        
+                    // Core's init function synchronously creates scene/camera/renderer/localPlayerModel
+                    // and starts its own render loop before returning, so we can proceed immediately --
+                    // no polling needed.
                     onCoreEngineReady();
                 })
                 .catch(err => {
@@ -209,9 +468,40 @@
             applySavedAvatarToCorePlayer();
             positionPlayerAndCameraForMap();
             updateAdoptMeHud();
+
+            // --- Gameplay systems (Bucks economy, pets, house interactions) ---
+            initSaveSystem();
+            initEconomyHud();
+            initNursery();
+            initInteractionPrompt();
+            initInteractKeyHook();
+            initPetNeedsLoop();
+            initHouseDoorZone();
+            initFurnitureShop();
+            renderOwnedFurniture();
+
+            // Expose game state and subsystem handles on window for future multiplayer integration
+            // and developer tooling. Functions declared with `function` at top level already attach
+            // to window automatically; these are the let/const-declared state that wouldn't be
+            // visible otherwise.
+            window.activePetMeshes = activePetMeshes;
+            window.interactionZones = interactionZones;
+            window.DOOR_INSIDE_POS = DOOR_INSIDE_POS;
+            window.DOOR_OUTSIDE_POS = DOOR_OUTSIDE_POS;
+            window.isInsideHouse = false; // initial value; kept in sync by setHouseInteriorVisible
+
             fadeOutBootScreen();
         }
 
+        // --- Strip Core's built-in test NPC + its mock chat greeting; this is a real map, not a test instance ---
+        //
+        // NOTE: Core's own render loop (executeClientRenderTick) unconditionally calls
+        // computerNetworkPlayer.getObjectByName("torso") / .getObjectByName("head") every single
+        // frame with no null-check -- it assumes that object always exists. Simply setting
+        // window.computerNetworkPlayer = null would crash Core's loop on the very next frame.
+        // Instead we remove the NPC visually from the scene but leave a lightweight, invisible
+        // stand-in group with the same named child meshes Core expects, so its existing per-frame
+        // code keeps working unmodified.
         function removeCoreNpcPlayer() {
             const THREE = window.THREE;
             if (typeof window.computerNetworkPlayer !== 'undefined' && window.computerNetworkPlayer) {
@@ -234,10 +524,12 @@
             }
         }
 
+        // --- Build the Adopt Me house + ground + path directly into Core's existing scene ---
         function buildAdoptMeMap() {
             const scene = window.scene;
             const THREE = window.THREE;
 
+            // Swap Core's default void/grid backdrop for an outdoor sky, since this map is outdoors
             scene.background = new THREE.Color(0xb3e5fc);
             scene.fog = new THREE.FogExp2(0xb3e5fc, 0.015);
 
@@ -256,14 +548,17 @@
                 window.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             }
 
+            // Ground/Grass Base
             const groundGeo = new THREE.PlaneGeometry(120, 120);
             const groundMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.9 });
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.01; 
+            ground.position.y = -0.01; // sit just below Core's grid plane
             ground.receiveShadow = true;
             scene.add(ground);
+            window.adoptMeGroundMesh = ground; // exposed so the house interior toggle can hide/show it
 
+            // House
             const houseGroup = new THREE.Group();
 
             const wallGeo = new THREE.BoxGeometry(8, 5.5, 6.5);
@@ -320,8 +615,9 @@
             houseGroup.add(rightGlass);
 
             scene.add(houseGroup);
-            window.adoptMeHouseGroup = houseGroup;
+            window.adoptMeHouseGroup = houseGroup; // exposed for later features (doors, interiors, etc.)
 
+            // Stone Path Approach
             const pathwayGeo = new THREE.PlaneGeometry(2, 6);
             const pathwayMat = new THREE.MeshStandardMaterial({ color: 0xb0bec5, roughness: 0.9 });
             const path = new THREE.Mesh(pathwayGeo, pathwayMat);
@@ -330,6 +626,7 @@
             path.receiveShadow = true;
             scene.add(path);
 
+            // Gentle idle house sway, folded into Core's existing render loop via a hook
             hookIntoRenderLoop(() => {
                 if (window.adoptMeHouseGroup) {
                     window.adoptMeHouseGroup.rotation.y = Math.sin(Date.now() * 0.0001) * 0.04;
@@ -337,7 +634,15 @@
             });
         }
 
-       
+        // --- Wrap Core's executeClientRenderTick so we can run per-frame map logic without touching Core.html ---
+        //
+        // IMPORTANT: Core's render loop re-schedules itself by calling
+        // `requestAnimationFrame(executeClientRenderTick)` as a bare identifier lookup, resolved
+        // against the global scope fresh on every call -- it is NOT a closed-over reference to the
+        // original function. That means simply reassigning window.executeClientRenderTick to a
+        // wrapped version is enough; Core's already-running loop will pick up the wrapped version
+        // on its very next frame on its own. Scheduling an extra requestAnimationFrame call here
+        // would start a second, parallel loop and double up every tick -- so we deliberately don't.
         function hookIntoRenderLoop(fn) {
             if (typeof window.executeClientRenderTick !== 'function') return;
             if (window.__adoptMePatchedRenderTick) {
@@ -353,6 +658,7 @@
             };
         }
 
+        // --- Recolor Core's existing avatar meshes using this player's saved profile, instead of building a second rig ---
         function applySavedAvatarToCorePlayer() {
             const avatarColors = { skin: "#ffdbac", shirt: "#ff941a", pants: "#1e3799" };
             let currentSessionUsername = "Guest";
@@ -399,6 +705,7 @@
             if (rightLeg) rightLeg.material = pantsMat;
         }
 
+        // --- Move Core's default spawn point/camera to suit the Adopt Me house map ---
         function positionPlayerAndCameraForMap() {
             if (window.localPlayerModel) {
                 window.localPlayerModel.position.set(0, 0, 8);
@@ -422,6 +729,930 @@
             if (!bootScreen) return;
             bootScreen.classList.add('fade-out');
             setTimeout(() => bootScreen.remove(), 350);
+        }
+
+        /* ================================================================
+         *  SAVE SYSTEM
+         * ----------------------------------------------------------------
+         *  One JSON blob per username in localStorage, mirroring the same
+         *  storage pattern Core's profile/avatar system already uses
+         *  (mb_users_db / mb_active_session). Keyed by username so
+         *  different logged-in accounts on the same browser don't share
+         *  progress. Falls back to a "guest" slot if no session exists.
+         * ================================================================ */
+
+        const SAVE_KEY_PREFIX = 'mb_adoptme_save_';
+        let gameState = null; // populated by initSaveSystem(), single source of truth for this session
+
+        function defaultGameState() {
+            return {
+                bucks: 100,
+                pets: [],          // { id, species, stage, xp, hunger, energy, fun, isNeon, isMegaNeon }
+                activePetId: null,
+                eggInventory: [],  // { id, species, hatchesAt }
+                furniture: []      // { id, type, x, z }
+            };
+        }
+
+        function currentSaveKey() {
+            const username = window.adoptMeUsername || "Guest";
+            return SAVE_KEY_PREFIX + username.toLowerCase();
+        }
+
+        function initSaveSystem() {
+            try {
+                const raw = localStorage.getItem(currentSaveKey());
+                gameState = raw ? Object.assign(defaultGameState(), JSON.parse(raw)) : defaultGameState();
+            } catch (err) {
+                console.warn("AdoptMe: save data unreadable, starting fresh.", err);
+                gameState = defaultGameState();
+            }
+            // Expose on window so multiplayer integrations and developer tools can access state
+            window.gameState = gameState;
+        }
+
+        // Debounced so rapid-fire changes (e.g. needs ticking down every frame) don't write
+        // to localStorage constantly -- saves are batched into one write per ~600ms of activity.
+        let _saveDebounceHandle = null;
+        function saveGameState() {
+            clearTimeout(_saveDebounceHandle);
+            _saveDebounceHandle = setTimeout(() => {
+                try {
+                    localStorage.setItem(currentSaveKey(), JSON.stringify(gameState));
+                } catch (err) {
+                    console.warn("AdoptMe: failed to save game state.", err);
+                }
+            }, 600);
+        }
+
+        function addBucks(amount) {
+            gameState.bucks = Math.max(0, gameState.bucks + amount);
+            updateEconomyHud();
+            saveGameState();
+        }
+
+        function spendBucks(amount) {
+            if (gameState.bucks < amount) return false;
+            gameState.bucks -= amount;
+            updateEconomyHud();
+            saveGameState();
+            return true;
+        }
+
+        /* ================================================================
+         *  TOASTS
+         * ================================================================ */
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-fade');
+                setTimeout(() => toast.remove(), 320);
+            }, 2600);
+        }
+
+        /* ================================================================
+         *  ECONOMY HUD
+         * ================================================================ */
+        function initEconomyHud() {
+            updateEconomyHud();
+        }
+
+        function updateEconomyHud() {
+            const label = document.getElementById('hud-bucks-label');
+            if (label) label.textContent = `💵 Bucks: ${gameState.bucks}`;
+        }
+
+        /* ================================================================
+         *  PET SPECIES + GROWTH CONFIG
+         * ================================================================ */
+        const PET_SPECIES = {
+            cat:     { name: "Cat",     emoji: "🐱", price: 50,  rarity: "Common",    bodyColor: 0xd4a373, accentColor: 0xf2e9dc },
+            dog:     { name: "Dog",     emoji: "🐶", price: 50,  rarity: "Common",    bodyColor: 0x8b5e3c, accentColor: 0xf2e9dc },
+            unicorn: { name: "Unicorn", emoji: "🦄", price: 600, rarity: "Legendary", bodyColor: 0xff6ec7, accentColor: 0xffffff }
+        };
+
+        // XP required to advance OUT of each stage; Full Grown is the final stage (no XP needed further,
+        // it just becomes eligible for Neon fusion once 4 of the same species are Full Grown).
+        const GROWTH_STAGES = ["Newborn", "Junior", "Teen", "Full Grown"];
+        const XP_TO_NEXT_STAGE = [30, 60, 100]; // index i = XP needed to leave stage i
+
+        const EGG_INCUBATION_MS = 20000; // 20s incubation, kept short for a browser game
+        const NEED_DECAY_PER_SEC = 0.6;  // each need drains this many points/sec (0-100 scale)
+        const INTERACT_COOLDOWN_MS = 4000; // prevents spam-clicking a pet for infinite Bucks/XP
+
+        function makePetId() { return 'pet_' + Date.now() + '_' + Math.floor(Math.random() * 10000); }
+        function makeEggId() { return 'egg_' + Date.now() + '_' + Math.floor(Math.random() * 10000); }
+
+        function createNewPet(species) {
+            return {
+                id: makePetId(),
+                species,
+                stage: 0,        // index into GROWTH_STAGES
+                xp: 0,
+                hunger: 100,
+                energy: 100,
+                fun: 100,
+                isNeon: false,
+                isMegaNeon: false,
+                lastInteractAt: 0
+            };
+        }
+
+        /* ================================================================
+         *  NURSERY (3D structure + egg shop)
+         * ================================================================ */
+        let nurseryGroup = null;
+        const NURSERY_POSITION = { x: -10, z: 4 };
+        const INTERACT_RADIUS = 2.6;
+
+        function buildNurseryStructure() {
+            const scene = window.scene;
+            const THREE = window.THREE;
+
+            nurseryGroup = new THREE.Group();
+
+            const baseGeo = new THREE.BoxGeometry(3.2, 2.4, 3.2);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0xffe0f0, roughness: 0.6 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 1.2;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            nurseryGroup.add(base);
+
+            const roofGeo = new THREE.ConeGeometry(2.4, 1.6, 4);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0xff8fc7, roughness: 0.5 });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 3.2;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            nurseryGroup.add(roof);
+
+            // Simple egg-shaped sign mesh sitting in front, just for visual identity
+            const signGeo = new THREE.SphereGeometry(0.4, 12, 12);
+            const signMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+            const sign = new THREE.Mesh(signGeo, signMat);
+            sign.scale.set(0.8, 1.1, 0.8);
+            sign.position.set(0, 0.6, 1.9);
+            nurseryGroup.add(sign);
+
+            nurseryGroup.position.set(NURSERY_POSITION.x, 0, NURSERY_POSITION.z);
+            scene.add(nurseryGroup);
+        }
+
+        function initNursery() {
+            buildNurseryStructure();
+            renderNurseryEggList();
+        }
+
+        function renderNurseryEggList() {
+            const list = document.getElementById('nursery-egg-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            // Neon/Mega Neon fusion section (shown only when eligible)
+            const fusionRows = buildNeonFusionRows();
+            if (fusionRows.length > 0) {
+                const fusionHeader = document.createElement('div');
+                fusionHeader.style.cssText = 'font-size:12px; font-weight:bold; color:#66ffff; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;';
+                fusionHeader.textContent = '✨ Neon Fusion';
+                list.appendChild(fusionHeader);
+                fusionRows.forEach(row => list.appendChild(row));
+                const divider = document.createElement('div');
+                divider.style.cssText = 'border-top:1px solid #2e1803; margin:8px 0;';
+                list.appendChild(divider);
+            }
+
+            // Egg purchase section
+            const eggHeader = document.createElement('div');
+            eggHeader.style.cssText = 'font-size:12px; font-weight:bold; color:#ff941a; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;';
+            eggHeader.textContent = '🥚 Eggs';
+            list.appendChild(eggHeader);
+
+            Object.entries(PET_SPECIES).forEach(([speciesKey, info]) => {
+                const row = document.createElement('div');
+                row.className = 'shop-item-row';
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'shop-item-info';
+                infoDiv.innerHTML = `
+                    <span class="shop-item-name">${info.emoji} ${info.name} Egg <span style="color:#999; font-weight:normal;">(${info.rarity})</span></span>
+                    <span class="shop-item-price">💵 ${info.price} Bucks</span>
+                `;
+
+                const buyBtn = document.createElement('button');
+                buyBtn.className = 'shop-buy-btn';
+                buyBtn.textContent = 'Buy Egg';
+                buyBtn.onclick = () => buyEgg(speciesKey);
+
+                row.appendChild(infoDiv);
+                row.appendChild(buyBtn);
+                list.appendChild(row);
+            });
+
+            // Incubating eggs countdown
+            if (gameState.eggInventory.length > 0) {
+                const incDiv = document.createElement('div');
+                incDiv.style.cssText = 'margin-top:8px; font-size:12px; color:#ccc; border-top:1px solid #2e1803; padding-top:8px;';
+                gameState.eggInventory.forEach(egg => {
+                    const secsLeft = Math.max(0, Math.ceil((egg.hatchesAt - Date.now()) / 1000));
+                    const info = PET_SPECIES[egg.species];
+                    incDiv.innerHTML += `<div>🥚 ${info.emoji} ${info.name} Egg — hatches in ${secsLeft}s</div>`;
+                });
+                list.appendChild(incDiv);
+            }
+        }
+
+        function buildNeonFusionRows() {
+            const rows = [];
+            Object.entries(PET_SPECIES).forEach(([speciesKey, info]) => {
+                const fullGrown = gameState.pets.filter(p =>
+                    p.species === speciesKey && p.stage === GROWTH_STAGES.length - 1 && !p.isNeon && !p.isMegaNeon
+                );
+                const neons = gameState.pets.filter(p => p.species === speciesKey && p.isNeon && !p.isMegaNeon);
+
+                if (fullGrown.length >= 4) {
+                    rows.push(buildFusionRow(
+                        `✨ Neon ${info.name}`,
+                        `Fuse 4 Full Grown ${info.name}s`,
+                        () => fuseNeonPet(speciesKey, false)
+                    ));
+                }
+                if (neons.length >= 4) {
+                    rows.push(buildFusionRow(
+                        `✨ Mega Neon ${info.name}`,
+                        `Fuse 4 Neon ${info.name}s`,
+                        () => fuseNeonPet(speciesKey, true)
+                    ));
+                }
+            });
+            return rows;
+        }
+
+        function buildFusionRow(label, subtitle, onFuse) {
+            const row = document.createElement('div');
+            row.className = 'shop-item-row';
+            row.style.borderColor = '#66ffff44';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'shop-item-info';
+            infoDiv.innerHTML = `
+                <span class="shop-item-name" style="color:#66ffff;">${label}</span>
+                <span class="shop-item-price" style="color:#aaa;">${subtitle}</span>
+            `;
+
+            const fuseBtn = document.createElement('button');
+            fuseBtn.className = 'shop-buy-btn';
+            fuseBtn.style.background = '#0099cc';
+            fuseBtn.textContent = 'Fuse!';
+            fuseBtn.onclick = onFuse;
+
+            row.appendChild(infoDiv);
+            row.appendChild(fuseBtn);
+            return row;
+        }
+
+        function fuseNeonPet(speciesKey, isMegaNeon) {
+            const info = PET_SPECIES[speciesKey];
+            const sourceList = isMegaNeon
+                ? gameState.pets.filter(p => p.species === speciesKey && p.isNeon && !p.isMegaNeon)
+                : gameState.pets.filter(p => p.species === speciesKey && p.stage === GROWTH_STAGES.length - 1 && !p.isNeon && !p.isMegaNeon);
+
+            if (sourceList.length < 4) {
+                showToast(`You need 4 ${isMegaNeon ? 'Neon' : 'Full Grown'} ${info.name}s to fuse!`);
+                return;
+            }
+
+            // Consume the 4 source pets
+            const consumed = sourceList.slice(0, 4).map(p => p.id);
+            gameState.pets = gameState.pets.filter(p => !consumed.includes(p.id));
+
+            // Create the fused pet
+            const fused = createNewPet(speciesKey);
+            fused.stage = GROWTH_STAGES.length - 1; // Full Grown
+            fused.isNeon = true;
+            if (isMegaNeon) fused.isMegaNeon = true;
+
+            // If the active pet was one of the consumed pets, clear it
+            if (consumed.includes(gameState.activePetId)) {
+                despawnActivePetMesh();
+                gameState.activePetId = null;
+            }
+
+            gameState.pets.push(fused);
+            gameState.activePetId = fused.id;
+            spawnActivePetMesh(fused);
+
+            saveGameState();
+            updatePetNeedsHud();
+            renderNurseryEggList();
+            closeAllPanels();
+            showToast(`✨ ${isMegaNeon ? 'Mega Neon' : 'Neon'} ${info.name} created!`);
+        }
+
+        function buyEgg(speciesKey) {
+            const info = PET_SPECIES[speciesKey];
+            if (!info) return;
+            if (!spendBucks(info.price)) {
+                showToast("Not enough Bucks!");
+                return;
+            }
+            gameState.eggInventory.push({
+                id: makeEggId(),
+                species: speciesKey,
+                hatchesAt: Date.now() + EGG_INCUBATION_MS
+            });
+            saveGameState();
+            showToast(`${info.emoji} ${info.name} Egg purchased! Incubating...`);
+            closeAllPanels();
+        }
+
+        /* ================================================================
+         *  PROXIMITY INTERACTION SYSTEM
+         * ----------------------------------------------------------------
+         *  Every frame, checks player distance to each registered
+         *  interactable zone (Nursery, house door, furniture shop, active
+         *  pet). Shows a "Press E" prompt when in range of the nearest
+         *  one, and routes the E keypress to that zone's handler.
+         * ================================================================ */
+        let interactionZones = []; // { id, getPosition: () => {x,z}, radius, label, onInteract }
+        let currentNearestZone = null;
+
+        function registerInteractionZone(zone) {
+            interactionZones = interactionZones.filter(z => z.id !== zone.id); // replace if re-registered
+            interactionZones.push(zone);
+        }
+
+        function unregisterInteractionZone(id) {
+            interactionZones = interactionZones.filter(z => z.id !== id);
+        }
+
+        function initInteractionPrompt() {
+            registerInteractionZone({
+                id: 'nursery',
+                getPosition: () => NURSERY_POSITION,
+                radius: INTERACT_RADIUS,
+                label: 'Open Nursery',
+                isActive: () => !isInsideHouse,
+                onInteract: () => openPanel('nursery-panel')
+            });
+
+            hookIntoRenderLoop(updateNearestInteractionZone);
+        }
+
+        function updateNearestInteractionZone() {
+            const player = window.localPlayerModel;
+            if (!player || interactionZones.length === 0) {
+                currentNearestZone = null;
+                setInteractPromptVisible(false);
+                return;
+            }
+
+            const px = player.position.x;
+            const pz = player.position.z;
+
+            let nearest = null;
+            let nearestDist = Infinity;
+            interactionZones.forEach(zone => {
+                if (typeof zone.isActive === 'function' && !zone.isActive()) return; // context-gated zones (e.g. only valid indoors)
+                const pos = zone.getPosition();
+                const d = Math.hypot(px - pos.x, pz - pos.z);
+                if (d <= zone.radius && d < nearestDist) {
+                    nearest = zone;
+                    nearestDist = d;
+                }
+            });
+
+            currentNearestZone = nearest;
+            if (nearest) {
+                setInteractPromptVisible(true, nearest.label);
+            } else {
+                setInteractPromptVisible(false);
+            }
+        }
+
+        function setInteractPromptVisible(visible, label) {
+            const promptEl = document.getElementById('interact-prompt');
+            if (!promptEl) return;
+            promptEl.classList.toggle('hidden', !visible);
+            if (visible && label) {
+                promptEl.innerHTML = `Press <kbd>E</kbd> to ${label}`;
+            }
+        }
+
+        function initInteractKeyHook() {
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+                if (e.key.toLowerCase() === 'e') {
+                    if (currentNearestZone) {
+                        currentNearestZone.onInteract();
+                    }
+                } else if (e.key === 'Escape') {
+                    closeAllPanels();
+                }
+            });
+        }
+
+        function openPanel(panelId) {
+            closeAllPanels();
+            const panel = document.getElementById(panelId);
+            if (panel) panel.classList.remove('hidden');
+        }
+
+        function closeAllPanels() {
+            document.querySelectorAll('.game-panel').forEach(p => p.classList.add('hidden'));
+        }
+
+        /* ================================================================
+         *  PET MESH + LIVE PET INSTANCES
+         * ----------------------------------------------------------------
+         *  activePets: Map<petId, { meshGroup, followTarget }>  -- only
+         *  pets currently spawned in the world (we only spawn the single
+         *  active pet to keep things simple and performant; owned-but-not-
+         *  active pets stay in gameState.pets without a mesh).
+         * ================================================================ */
+        const activePetMeshes = new Map();
+
+        function buildPetMesh(species) {
+            const THREE = window.THREE;
+            const info = PET_SPECIES[species] || PET_SPECIES.cat;
+
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshLambertMaterial({ color: info.bodyColor });
+            const accentMat = new THREE.MeshLambertMaterial({ color: info.accentColor });
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.7), bodyMat);
+            body.position.y = 0.3;
+            body.name = 'body';
+            group.add(body);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.32, 0.32), bodyMat);
+            head.position.set(0, 0.45, 0.45);
+            head.name = 'head';
+            group.add(head);
+
+            // Small ear/horn accent so species are visually distinguishable at a glance
+            const accentGeo = species === 'unicorn'
+                ? new THREE.ConeGeometry(0.06, 0.25, 6)
+                : new THREE.ConeGeometry(0.08, 0.14, 4);
+            const earL = new THREE.Mesh(accentGeo, accentMat);
+            earL.position.set(species === 'unicorn' ? 0 : -0.12, 0.68, species === 'unicorn' ? 0.5 : 0.45);
+            group.add(earL);
+            if (species !== 'unicorn') {
+                const earR = earL.clone();
+                earR.position.x = 0.12;
+                group.add(earR);
+            }
+
+            const legGeo = new THREE.BoxGeometry(0.1, 0.22, 0.1);
+            [[-0.18, 0.25], [0.18, 0.25], [-0.18, -0.25], [0.18, -0.25]].forEach(([lx, lz]) => {
+                const leg = new THREE.Mesh(legGeo, bodyMat);
+                leg.position.set(lx, 0.11, lz);
+                group.add(leg);
+            });
+
+            group.castShadow = true;
+            group.traverse(node => { if (node.isMesh) node.castShadow = true; });
+
+            return group;
+        }
+
+        function spawnActivePetMesh(pet) {
+            despawnActivePetMesh(); // only one pet follows at a time in v1
+            const scene = window.scene;
+            const player = window.localPlayerModel;
+            if (!scene || !player) return;
+
+            const mesh = buildPetMesh(pet.species);
+            const scale = 0.6 + (pet.stage / (GROWTH_STAGES.length - 1)) * 0.6; // grows visually with stage
+            mesh.scale.set(scale, scale, scale);
+            mesh.position.set(player.position.x - 1, 0, player.position.z + 1);
+
+            if (pet.isNeon || pet.isMegaNeon) {
+                applyNeonGlow(mesh, pet.isMegaNeon);
+            }
+
+            scene.add(mesh);
+            activePetMeshes.set(pet.id, { meshGroup: mesh });
+        }
+
+        function despawnActivePetMesh() {
+            activePetMeshes.forEach((entry, id) => {
+                if (window.scene) window.scene.remove(entry.meshGroup);
+            });
+            activePetMeshes.clear();
+        }
+
+        function applyNeonGlow(meshGroup, isMega) {
+            const THREE = window.THREE;
+            const glowColor = isMega ? 0xffffff : 0x66ffff;
+            meshGroup.traverse(node => {
+                if (node.isMesh) {
+                    node.material = node.material.clone();
+                    node.material.emissive = new THREE.Color(glowColor);
+                    node.material.emissiveIntensity = isMega ? 0.9 : 0.6;
+                }
+            });
+        }
+
+        function getActivePet() {
+            if (!gameState.activePetId) return null;
+            return gameState.pets.find(p => p.id === gameState.activePetId) || null;
+        }
+
+        /* ================================================================
+         *  EGG HATCHING + PET NEEDS LOOP (runs once per second, not per-frame,
+         *  since needs decay slowly -- no need for 60fps precision here)
+         * ================================================================ */
+        function initPetNeedsLoop() {
+            // Re-spawn the active pet's mesh on load if one was already chosen in a previous session
+            const active = getActivePet();
+            if (active) spawnActivePetMesh(active);
+
+            setInterval(tickEggsAndNeeds, 1000);
+            hookIntoRenderLoop(updatePetFollowPositions);
+
+            updatePetNeedsHud();
+        }
+
+        function tickEggsAndNeeds() {
+            let stateChanged = false;
+
+            // --- Hatch any eggs whose timer is up ---
+            const now = Date.now();
+            const stillIncubating = [];
+            gameState.eggInventory.forEach(egg => {
+                if (now >= egg.hatchesAt) {
+                    const newPet = createNewPet(egg.species);
+                    gameState.pets.push(newPet);
+                    if (!gameState.activePetId) {
+                        gameState.activePetId = newPet.id;
+                        spawnActivePetMesh(newPet);
+                    }
+                    const info = PET_SPECIES[egg.species];
+                    showToast(`${info.emoji} Your ${info.name} egg hatched!`);
+                    stateChanged = true;
+                } else {
+                    stillIncubating.push(egg);
+                }
+            });
+            gameState.eggInventory = stillIncubating;
+
+            // --- Decay needs for the active pet only (matches "only active pet is in the world" model) ---
+            const active = getActivePet();
+            if (active) {
+                active.hunger = Math.max(0, active.hunger - NEED_DECAY_PER_SEC);
+                active.energy = Math.max(0, active.energy - NEED_DECAY_PER_SEC);
+                active.fun = Math.max(0, active.fun - NEED_DECAY_PER_SEC);
+                stateChanged = true;
+                updatePetNeedsHud();
+            }
+
+            if (stateChanged) saveGameState();
+        }
+
+        function updatePetFollowPositions() {
+            const active = getActivePet();
+            if (!active) return;
+            const entry = activePetMeshes.get(active.id);
+            const player = window.localPlayerModel;
+            if (!entry || !player) return;
+
+            // Simple lazy-follow: pet eases toward a point slightly behind/beside the player
+            const targetX = player.position.x - Math.sin(player.rotation.y) * 1.4;
+            const targetZ = player.position.z - Math.cos(player.rotation.y) * 1.4;
+
+            entry.meshGroup.position.x += (targetX - entry.meshGroup.position.x) * 0.06;
+            entry.meshGroup.position.z += (targetZ - entry.meshGroup.position.z) * 0.06;
+
+            const dx = targetX - entry.meshGroup.position.x;
+            const dz = targetZ - entry.meshGroup.position.z;
+            if (Math.hypot(dx, dz) > 0.05) {
+                entry.meshGroup.rotation.y = Math.atan2(dx, dz);
+            }
+
+            // Gentle idle bob
+            entry.meshGroup.position.y = Math.abs(Math.sin(Date.now() * 0.004)) * 0.05;
+        }
+
+        function updatePetNeedsHud() {
+            const hud = document.getElementById('pet-needs-hud');
+            const active = getActivePet();
+            if (!hud) return;
+
+            if (!active) {
+                hud.classList.add('hidden');
+                refreshPetInteractionZone();
+                return;
+            }
+            hud.classList.remove('hidden');
+
+            const info = PET_SPECIES[active.species];
+            document.getElementById('pet-needs-name').textContent =
+                `${info.emoji} ${info.name} • ${GROWTH_STAGES[active.stage]}${active.isMegaNeon ? ' ✨Mega Neon' : active.isNeon ? ' ✨Neon' : ''}`;
+            document.getElementById('need-fill-hunger').style.width = active.hunger + '%';
+            document.getElementById('need-fill-energy').style.width = active.energy + '%';
+            document.getElementById('need-fill-fun').style.width = active.fun + '%';
+
+            refreshPetInteractionZone();
+        }
+
+        // Keeps the "care for pet" interaction zone following the pet's live mesh position
+        function refreshPetInteractionZone() {
+            const active = getActivePet();
+            if (!active) {
+                unregisterInteractionZone('active-pet');
+                return;
+            }
+            registerInteractionZone({
+                id: 'active-pet',
+                getPosition: () => {
+                    const entry = activePetMeshes.get(active.id);
+                    return entry ? { x: entry.meshGroup.position.x, z: entry.meshGroup.position.z } : { x: 9999, z: 9999 };
+                },
+                radius: 1.8,
+                label: 'Care for Pet',
+                onInteract: () => interactWithActivePet()
+            });
+        }
+
+        function interactWithActivePet() {
+            const active = getActivePet();
+            if (!active) return;
+
+            const now = Date.now();
+            if (now - active.lastInteractAt < INTERACT_COOLDOWN_MS) {
+                showToast("Your pet needs a moment to rest from that!");
+                return;
+            }
+            active.lastInteractAt = now;
+
+            active.hunger = Math.min(100, active.hunger + 30);
+            active.energy = Math.min(100, active.energy + 30);
+            active.fun = Math.min(100, active.fun + 30);
+
+            const bucksEarned = 5;
+            addBucks(bucksEarned);
+            grantPetXp(active, 10);
+
+            showToast(`+${bucksEarned} Bucks! Pet cared for. 🧡`);
+            updatePetNeedsHud();
+            saveGameState();
+        }
+
+        /* ================================================================
+         *  GROWTH + NEON FUSION
+         * ================================================================ */
+        function grantPetXp(pet, amount) {
+            if (pet.stage >= GROWTH_STAGES.length - 1) return; // already Full Grown
+            pet.xp += amount;
+            const needed = XP_TO_NEXT_STAGE[pet.stage];
+            if (pet.xp >= needed) {
+                pet.xp -= needed;
+                pet.stage += 1;
+                const info = PET_SPECIES[pet.species];
+                showToast(`${info.emoji} ${info.name} grew to ${GROWTH_STAGES[pet.stage]}!`);
+
+                // Re-spawn mesh at new scale if this is the active pet
+                if (pet.id === gameState.activePetId) {
+                    spawnActivePetMesh(pet);
+                }
+
+                if (pet.stage === GROWTH_STAGES.length - 1) {
+                    checkNeonFusionAvailable(pet.species);
+                }
+            }
+        }
+
+        // Checks if the player now has 4+ Full Grown pets of one species and offers to fuse them into Neon.
+        // (Kept automatic-prompt rather than a full UI flow for v1 -- a toast invites the player to the
+        // Nursery where a fuse option appears once eligible.)
+        function checkNeonFusionAvailable(species) {
+            const fullGrown = gameState.pets.filter(p =>
+                p.species === species && p.stage === GROWTH_STAGES.length - 1 && !p.isNeon && !p.isMegaNeon
+            );
+            if (fullGrown.length >= 4) {
+                const info = PET_SPECIES[species];
+                showToast(`✨ You have 4 Full Grown ${info.name}s! Visit the Nursery to fuse a Neon ${info.name}.`);
+            }
+
+            const neons = gameState.pets.filter(p => p.species === species && p.isNeon && !p.isMegaNeon);
+            if (neons.length >= 4) {
+                const info = PET_SPECIES[species];
+                showToast(`✨ You have 4 Neon ${info.name}s! Visit the Nursery to fuse a Mega Neon ${info.name}.`);
+            }
+        }
+
+        /* ================================================================
+         *  HOUSE INTERIOR / EXTERIOR TOGGLE
+         * ----------------------------------------------------------------
+         *  Rather than a full separate scene swap (which would need to
+         *  rebuild lighting/ground/etc. and re-handle the player rig), we
+         *  keep ONE scene and toggle visibility: the outdoor house shell +
+         *  yard hide, an indoor room (walls/floor sized to match the house
+         *  footprint) shows, and the player teleports just inside the door.
+         *  Walking back through the door zone from inside reverses it.
+         * ================================================================ */
+        let interiorGroup = null;
+        let isInsideHouse = false;
+        const DOOR_OUTSIDE_POS = { x: 0, z: 5.2 };
+        const DOOR_INSIDE_POS = { x: 0, z: 2.5 };
+
+        function buildHouseInterior() {
+            const THREE = window.THREE;
+            interiorGroup = new THREE.Group();
+            interiorGroup.visible = false;
+
+            const floorGeo = new THREE.PlaneGeometry(7.6, 6.2);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0xd7ccc8, roughness: 0.8 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, 0.01, -0.5);
+            floor.receiveShadow = true;
+            interiorGroup.add(floor);
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xfff3e0, roughness: 0.7 });
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(7.6, 4, 0.2), wallMat);
+            backWall.position.set(0, 2, -3.5);
+            interiorGroup.add(backWall);
+
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 6.2), wallMat);
+            leftWall.position.set(-3.8, 2, -0.5);
+            interiorGroup.add(leftWall);
+
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 6.2), wallMat);
+            rightWall.position.set(3.8, 2, -0.5);
+            interiorGroup.add(rightWall);
+
+            // A simple shop counter inside marking the furniture shop interaction point
+            const counterGeo = new THREE.BoxGeometry(1.4, 0.9, 0.6);
+            const counterMat = new THREE.MeshStandardMaterial({ color: 0xa1887f, roughness: 0.6 });
+            const counter = new THREE.Mesh(counterGeo, counterMat);
+            counter.position.set(-2.6, 0.45, -2.8);
+            counter.castShadow = true;
+            interiorGroup.add(counter);
+
+            window.scene.add(interiorGroup);
+        }
+
+        function setHouseInteriorVisible(visible) {
+            isInsideHouse = visible;
+            window.isInsideHouse = visible; // keep window in sync for external access
+            if (interiorGroup) interiorGroup.visible = visible;
+            window.interiorGroup = interiorGroup; // expose for external access
+            if (window.adoptMeHouseGroup) window.adoptMeHouseGroup.visible = !visible;
+
+            // Hide/show the outdoor ground+nursery so the interior reads as a clean separate room
+            if (window.adoptMeGroundMesh) window.adoptMeGroundMesh.visible = !visible;
+            if (nurseryGroup) nurseryGroup.visible = !visible;
+
+            const player = window.localPlayerModel;
+            if (player) {
+                const target = visible ? DOOR_INSIDE_POS : DOOR_OUTSIDE_POS;
+                player.position.set(target.x, 0, target.z);
+            }
+        }
+
+        function initHouseDoorZone() {
+            buildHouseInterior();
+            registerHouseDoorZone();
+        }
+
+        function registerHouseDoorZone() {
+            registerInteractionZone({
+                id: 'house-door',
+                getPosition: () => isInsideHouse ? DOOR_INSIDE_POS : DOOR_OUTSIDE_POS,
+                radius: 1.6,
+                get label() { return isInsideHouse ? 'Exit House' : 'Enter House'; },
+                onInteract: () => {
+                    setHouseInteriorVisible(!isInsideHouse);
+                }
+            });
+        }
+
+        /* ================================================================
+         *  FURNITURE SHOP
+         * ----------------------------------------------------------------
+         *  A shop counter inside the house. Each furniture type has a
+         *  fixed price and a fixed placement slot inside the interior
+         *  (kept simple for v1 -- no drag-and-drop placement yet).
+         * ================================================================ */
+        const FURNITURE_CATALOG = {
+            rug:     { name: "Cozy Rug",     emoji: "🟫", price: 30,  slot: { x: 0, z: -1.2 } },
+            lamp:    { name: "Floor Lamp",   emoji: "💡", price: 45,  slot: { x: 2.6, z: -2.6 } },
+            bookshelf: { name: "Bookshelf",  emoji: "📚", price: 80,  slot: { x: -2.8, z: -1.2 } }
+        };
+        const SHOP_COUNTER_POS = { x: -2.6, z: -2.8 };
+
+        function initFurnitureShop() {
+            registerInteractionZone({
+                id: 'furniture-shop',
+                getPosition: () => SHOP_COUNTER_POS,
+                radius: 1.8,
+                label: 'Browse Furniture',
+                isActive: () => isInsideHouse,
+                onInteract: () => openPanel('furniture-panel')
+            });
+            renderFurnitureShopList();
+        }
+
+        function renderFurnitureShopList() {
+            const list = document.getElementById('furniture-item-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            Object.entries(FURNITURE_CATALOG).forEach(([typeKey, info]) => {
+                const owned = gameState.furniture.some(f => f.type === typeKey);
+
+                const row = document.createElement('div');
+                row.className = 'shop-item-row';
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'shop-item-info';
+                infoDiv.innerHTML = `
+                    <span class="shop-item-name">${info.emoji} ${info.name}</span>
+                    <span class="shop-item-price">${owned ? 'Owned' : `💵 ${info.price} Bucks`}</span>
+                `;
+
+                const buyBtn = document.createElement('button');
+                buyBtn.className = 'shop-buy-btn';
+                buyBtn.textContent = owned ? 'Owned' : 'Buy';
+                buyBtn.disabled = owned;
+                buyBtn.onclick = () => buyFurniture(typeKey);
+
+                row.appendChild(infoDiv);
+                row.appendChild(buyBtn);
+                list.appendChild(row);
+            });
+        }
+
+        function buyFurniture(typeKey) {
+            const info = FURNITURE_CATALOG[typeKey];
+            if (!info) return;
+            if (gameState.furniture.some(f => f.type === typeKey)) return; // already owned, one of each in v1
+
+            if (!spendBucks(info.price)) {
+                showToast("Not enough Bucks!");
+                return;
+            }
+
+            gameState.furniture.push({ id: 'furn_' + Date.now(), type: typeKey, x: info.slot.x, z: info.slot.z });
+            saveGameState();
+            showToast(`${info.emoji} ${info.name} placed in your house!`);
+            renderFurnitureShopList();
+            renderOwnedFurniture();
+            closeAllPanels();
+        }
+
+        function buildFurnitureMesh(typeKey) {
+            const THREE = window.THREE;
+            const group = new THREE.Group();
+
+            if (typeKey === 'rug') {
+                const rug = new THREE.Mesh(
+                    new THREE.PlaneGeometry(2, 1.4),
+                    new THREE.MeshStandardMaterial({ color: 0xc06b4f, roughness: 0.9 })
+                );
+                rug.rotation.x = -Math.PI / 2;
+                rug.position.y = 0.015;
+                group.add(rug);
+            } else if (typeKey === 'lamp') {
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+                pole.position.y = 0.7;
+                group.add(pole);
+                const shade = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0xfff3b0, emissive: 0xfff3b0, emissiveIntensity: 0.4 }));
+                shade.position.y = 1.45;
+                group.add(shade);
+            } else if (typeKey === 'bookshelf') {
+                const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.7 }));
+                shelf.position.y = 0.9;
+                shelf.castShadow = true;
+                group.add(shelf);
+            }
+
+            return group;
+        }
+
+        function renderOwnedFurniture() {
+            // Clear any previously rendered furniture meshes before re-rendering, so this is safe to call repeatedly
+            if (window.adoptMeFurnitureGroup) {
+                window.scene.remove(window.adoptMeFurnitureGroup);
+            }
+            const THREE = window.THREE;
+            const group = new THREE.Group();
+
+            gameState.furniture.forEach(item => {
+                const mesh = buildFurnitureMesh(item.type);
+                mesh.position.set(item.x, 0, item.z);
+                group.add(mesh);
+            });
+
+            window.scene.add(group);
+            window.adoptMeFurnitureGroup = group;
         }
     </script>
 </body>
